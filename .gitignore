@@ -1,0 +1,105 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.orig
+*.bak
+.cache/
+
+# Chrome extension development
+*.pem
+*.crx
+
+# Package manager configs
+.npmrc
+.yarnrc
+.yarnrc.yml
+
+
+# ===== 开源发布：不公开个人开发过程文件 =====
+dev/
+tests/
+docs/
+DEVLOG.md
+
+# 仅供参考的外部项目目录（非运行时必需）
+references/
+
+# 本地环境与敏感配置
+.env
+.env.*
+*.local
+
+# 本地快照/打包产物
+snapshots/
+*.zip
+*.7z
+*.rar
+
+# 调试与测试输出
+playwright-report/
+test-results/
+trace/
+*.trace
+*.har
+
+
+# ===== Agent/AI 协作配置 =====
+AGENTS.md
+AGENTS.override.md
+AGENTS*.md
+
+.codex/
+.claude/
+.cursor/
+.mcp/
+.continue/
+.aider*
+.roo/
+.windsurf/
+
+# 任意子目录下同类目录（防止参考仓库/子目录误提交）
+**/.codex/
+**/.codex/skills/
+**/.claude/
+**/.claude/skills/
+**/.cursor/
+**/.cursor/skills/
+**/.mcp/
+**/.mcp/skills/
+**/.continue/
+**/.aider*/
+**/.roo/
+**/.windsurf/
+**/.windsurf/skills/
+
+# Agent 协作文档（防止误提交）
+docs/codex-*.md
+docs/*handoff*.md
+docs/*postmortem*.md

@@ -1,0 +1,338 @@
+{
+  "manifest_version": 3,
+  "name": "CodeNote Helper",
+  "version": "1.0.69",
+  "description": "LeetCode / TorchCode 笔记助手 + AI 对话时间轴 | Code study notes & AI timeline",
+  "author": "cao",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://leetcode.cn/*",
+    "https://leetcode.com/*",
+    "https://codefun2000.com/*",
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
+    "https://api.openai.com/*",
+    "https://*.chatanywhere.tech/*",
+    "https://*.chatanywhere.org/*",
+    "https://*.deepseek.com/*",
+    "https://*.moonshot.cn/*",
+    "https://gpt.aimonkey.plus/*",
+    "https://c.aimonkey.plus/*",
+    "https://claude.ai/*",
+    "https://dav.jianguoyun.com/*",
+    "https://deep-ml.com/problems*",
+    "https://deep-ml.com/problems/*",
+    "https://www.deep-ml.com/problems*",
+    "https://www.deep-ml.com/problems/*",
+    "https://huggingface.co/spaces/duoan/TorchCode*",
+    "https://duoan-torchcode.hf.space/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.cn/problems/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/problem-data/constants.js",
+        "shared/problem-data/helpers.js",
+        "shared/problem-data/sync-core.js",
+        "shared/problem-data/records.js",
+        "shared/problem-data/importers/hot100.js",
+        "shared/problem-data/lists.js",
+        "shared/problem-data/providers/chrome-sync.js",
+        "shared/problem-data/providers/nutstore-webdav.js",
+        "shared/problem-data/index.js",
+        "shared/problem-data.js",
+        "shared/messaging.js",
+        "shared/error-messages.js",
+        "shared/api-client.js",
+        "shared/ui-generation-controller.js",
+        "shared/markdown-stream-render.js",
+        "content/leetcode/core/utils.js",
+        "content/leetcode/core/recommendation-helper.js",
+        "content/leetcode/core/prompt-generator.js",
+        "content/leetcode/core/markdown-render.js",
+        "content/leetcode/core/api-client.js",
+        "shared/cat-companion.js",
+        "content/leetcode/core/ui-modal.js",
+        "content/leetcode/sites/leetcode-cn.js",
+        "content/leetcode/index.js"
+      ],
+      "css": [
+        "content/leetcode.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://leetcode.com/problems/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/problem-data/constants.js",
+        "shared/problem-data/helpers.js",
+        "shared/problem-data/sync-core.js",
+        "shared/problem-data/records.js",
+        "shared/problem-data/importers/hot100.js",
+        "shared/problem-data/lists.js",
+        "shared/problem-data/providers/chrome-sync.js",
+        "shared/problem-data/providers/nutstore-webdav.js",
+        "shared/problem-data/index.js",
+        "shared/problem-data.js",
+        "shared/messaging.js",
+        "shared/error-messages.js",
+        "shared/api-client.js",
+        "shared/ui-generation-controller.js",
+        "shared/markdown-stream-render.js",
+        "content/leetcode/core/utils.js",
+        "content/leetcode/core/recommendation-helper.js",
+        "content/leetcode/core/prompt-generator.js",
+        "content/leetcode/core/markdown-render.js",
+        "content/leetcode/core/api-client.js",
+        "shared/cat-companion.js",
+        "content/leetcode/core/ui-modal.js",
+        "content/leetcode/sites/leetcode-us.js",
+        "content/leetcode/index.js"
+      ],
+      "css": [
+        "content/leetcode.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://codefun2000.com/p/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/problem-data/constants.js",
+        "shared/problem-data/helpers.js",
+        "shared/problem-data/sync-core.js",
+        "shared/problem-data/records.js",
+        "shared/problem-data/importers/hot100.js",
+        "shared/problem-data/lists.js",
+        "shared/problem-data/providers/chrome-sync.js",
+        "shared/problem-data/providers/nutstore-webdav.js",
+        "shared/problem-data/index.js",
+        "shared/problem-data.js",
+        "shared/messaging.js",
+        "shared/error-messages.js",
+        "shared/api-client.js",
+        "shared/ui-generation-controller.js",
+        "shared/markdown-stream-render.js",
+        "content/leetcode/core/utils.js",
+        "content/leetcode/core/recommendation-helper.js",
+        "content/leetcode/core/prompt-generator.js",
+        "content/leetcode/core/markdown-render.js",
+        "content/leetcode/core/api-client.js",
+        "shared/cat-companion.js",
+        "content/leetcode/core/ui-modal.js",
+        "content/leetcode/sites/codefun2000.js",
+        "content/leetcode/index.js"
+      ],
+      "css": [
+        "content/leetcode.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/messaging.js",
+        "content/timeline/sites/chatgpt/timeline.js"
+      ],
+      "css": [
+        "content/timeline/sites/chatgpt/timeline.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/messaging.js",
+        "content/timeline/sites/gemini/timeline.js"
+      ],
+      "css": [
+        "content/timeline/sites/gemini/timeline.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gpt.aimonkey.plus/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/messaging.js",
+        "content/timeline/sites/gpt-aimonkey/timeline.js"
+      ],
+      "css": [
+        "content/timeline/sites/gpt-aimonkey/timeline.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://c.aimonkey.plus/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/messaging.js",
+        "content/timeline/sites/claude-aimonkey/timeline.js"
+      ],
+      "css": [
+        "content/timeline/sites/claude-aimonkey/timeline.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/messaging.js",
+        "content/timeline/sites/claude/timeline.js"
+      ],
+      "css": [
+        "content/timeline/sites/claude/timeline.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://deep-ml.com/problems*",
+        "https://deep-ml.com/problems/*",
+        "https://www.deep-ml.com/problems*",
+        "https://www.deep-ml.com/problems/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/problem-data/constants.js",
+        "shared/problem-data/helpers.js",
+        "shared/problem-data/sync-core.js",
+        "shared/problem-data/records.js",
+        "shared/problem-data/importers/hot100.js",
+        "shared/problem-data/lists.js",
+        "shared/problem-data/providers/chrome-sync.js",
+        "shared/problem-data/providers/nutstore-webdav.js",
+        "shared/problem-data/index.js",
+        "shared/problem-data.js",
+        "shared/messaging.js",
+        "shared/error-messages.js",
+        "shared/api-client.js",
+        "shared/ui-generation-controller.js",
+        "shared/markdown-stream-render.js",
+        "content/leetcode/core/utils.js",
+        "content/leetcode/core/markdown-render.js",
+        "content/leetcode/core/api-client.js",
+        "shared/cat-companion.js",
+        "content/torchcode/data/catalog.js",
+        "content/torchcode/core/notebook-utils.js",
+        "content/torchcode/core/prompt-generator.shared.js",
+        "content/torchcode/core/prompt-generator.deep-ml.js",
+        "content/torchcode/core/prompt-generator.workspace.js",
+        "content/torchcode/core/prompt-generator.js",
+        "content/torchcode/core/ui-modal.js",
+        "content/torchcode/sites/deep-ml.js",
+        "content/torchcode/sites/huggingface.js",
+        "content/torchcode/index.js"
+      ],
+      "css": [
+        "content/torchcode.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://huggingface.co/spaces/duoan/TorchCode*",
+        "https://duoan-torchcode.hf.space/*"
+      ],
+      "js": [
+        "shared/storage.js",
+        "shared/problem-data/constants.js",
+        "shared/problem-data/helpers.js",
+        "shared/problem-data/sync-core.js",
+        "shared/problem-data/records.js",
+        "shared/problem-data/importers/hot100.js",
+        "shared/problem-data/lists.js",
+        "shared/problem-data/providers/chrome-sync.js",
+        "shared/problem-data/providers/nutstore-webdav.js",
+        "shared/problem-data/index.js",
+        "shared/problem-data.js",
+        "shared/messaging.js",
+        "shared/error-messages.js",
+        "shared/api-client.js",
+        "shared/ui-generation-controller.js",
+        "shared/markdown-stream-render.js",
+        "content/leetcode/core/utils.js",
+        "content/leetcode/core/markdown-render.js",
+        "content/leetcode/core/api-client.js",
+        "shared/cat-companion.js",
+        "content/torchcode/data/catalog.js",
+        "content/torchcode/core/notebook-utils.js",
+        "content/torchcode/core/prompt-generator.shared.js",
+        "content/torchcode/core/prompt-generator.deep-ml.js",
+        "content/torchcode/core/prompt-generator.workspace.js",
+        "content/torchcode/core/prompt-generator.js",
+        "content/torchcode/core/ui-modal.js",
+        "content/torchcode/sites/deep-ml.js",
+        "content/torchcode/sites/huggingface.js",
+        "content/torchcode/index.js"
+      ],
+      "css": [
+        "content/torchcode.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/cat-v2-companion.png"
+      ],
+      "matches": [
+        "https://leetcode.cn/*",
+        "https://leetcode.com/*",
+        "https://codefun2000.com/*",
+        "https://deep-ml.com/*",
+        "https://www.deep-ml.com/*",
+        "https://huggingface.co/*",
+        "https://duoan-torchcode.hf.space/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    },
+    "default_title": "CodeNote Helper"
+  },
+  "options_page": "options/options.html"
+}

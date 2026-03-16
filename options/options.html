@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级设置 - CodeNote Helper</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="page-header">
+            <div class="page-title">高级设置</div>
+            <div class="page-subtitle">这里可以统一管理 AI 时间轴、本地导入导出以及 API 配置。</div>
+        </header>
+
+        <section class="card">
+            <div class="card-title">常规设置</div>
+            <div class="switch-row">
+                <div class="switch-copy">
+                    <div class="switch-title">AI 时间轴</div>
+                    <div class="switch-desc">关闭后，ChatGPT、Gemini、Claude 等页面将不再显示时间轴。</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="timeline-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-title">数据与同步</div>
+            <div class="card-note">本地数据始终优先写入当前浏览器。你也可以导出或导入 JSON。</div>
+
+            <div class="section-grid">
+                <div class="summary-item">
+                    <div class="summary-label">本地数据位置</div>
+                    <div class="summary-value" id="local-label">当前浏览器</div>
+                    <div class="summary-note">可以通过导出 JSON 获得可见备份文件。</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">本地修订号</div>
+                    <div class="summary-value" id="local-revision">0</div>
+                    <div class="summary-note" id="last-local-write">最近写入：暂无</div>
+                </div>
+            </div>
+
+            <div class="actions-row" style="margin-top: 16px;">
+                <button class="btn btn-secondary" id="btn-export-json">导出 JSON</button>
+                <button class="btn btn-secondary" id="btn-import-json">导入 JSON</button>
+                <input type="file" id="import-json-file" accept=".json,application/json">
+            </div>
+
+            <div id="cloud-sync-section">
+            <div class="switch-row" style="margin-top: 18px;">
+                <div class="switch-copy">
+                    <div class="switch-title">Chrome Sync</div>
+                    <div class="switch-desc">用于同步轻量状态。请在浏览器中登录账号并开启同步后使用。</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="chrome-sync-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="actions-row" style="margin-top: 12px;">
+                <button class="btn btn-secondary" id="btn-open-browser-sync">打开浏览器同步设置</button>
+                <button class="btn btn-secondary" id="btn-run-chrome-sync">立即同步</button>
+            </div>
+
+            <div class="status-box" style="margin-top: 14px;">
+                <div class="status-row">
+                    <span>同步方式</span>
+                    <strong id="chrome-sync-browser">浏览器同步</strong>
+                </div>
+                <div class="status-row">
+                    <span>同步提示</span>
+                    <strong id="chrome-sync-hint">暂无</strong>
+                </div>
+                <div class="status-row">
+                    <span>同步设置页</span>
+                    <strong id="chrome-sync-settings-url">暂无</strong>
+                </div>
+                <div class="status-row">
+                    <span>最近同步</span>
+                    <strong id="chrome-sync-last-at">暂无</strong>
+                </div>
+                <div class="status-row">
+                    <span>最近状态</span>
+                    <strong id="chrome-sync-last-status">暂无</strong>
+                </div>
+                <div class="status-row">
+                    <span>最近错误</span>
+                    <strong id="chrome-sync-last-error">暂无</strong>
+                </div>
+            </div>
+
+            <div class="switch-row" style="margin-top: 18px;">
+                <div class="switch-copy">
+                    <div class="switch-title">坚果云完整备份</div>
+                    <div class="switch-desc">用于完整备份题目正文和题单数据。默认写入固定远端目录，不建议写到 WebDAV 根目录。</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="webdav-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div id="webdav-settings-panel" style="display: none;">
+                <div class="form-grid" style="margin-top: 14px;">
+                    <div class="form-group">
+                        <label for="webdav-email">坚果云邮箱</label>
+                        <input type="text" id="webdav-email" placeholder="你的坚果云邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label for="webdav-password">应用密码</label>
+                        <input type="password" id="webdav-password" placeholder="不是登录密码，而是应用密码">
+                    </div>
+                    <div class="form-group full">
+                        <label for="webdav-remote-path">远端文件路径</label>
+                        <input type="text" id="webdav-remote-path" placeholder="CodeNote-Helper/backups/full-backup.json">
+                        <div class="form-hint">默认路径是 `CodeNote-Helper/backups/full-backup.json`；如果只填写文件名，会自动保存到固定目录下。</div>
+                    </div>
+                </div>
+
+                <div class="actions-row" style="margin-top: 12px;">
+                    <button class="btn btn-secondary" id="btn-save-sync">保存同步设置</button>
+                    <button class="btn btn-secondary" id="btn-test-webdav">测试连接</button>
+                    <button class="btn btn-secondary" id="btn-backup-webdav">立即备份</button>
+                    <button class="btn btn-secondary" id="btn-restore-webdav">从云端恢复</button>
+                </div>
+
+                <div class="status-box" style="margin-top: 14px;">
+                    <div class="status-row">
+                        <span>WebDAV 地址</span>
+                        <strong id="webdav-base-url">暂无</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>远端路径</span>
+                        <strong id="webdav-remote-label">暂无</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>最近备份/恢复</span>
+                        <strong id="webdav-last-at">暂无</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>最近状态</span>
+                        <strong id="webdav-last-status">暂无</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>最近错误</span>
+                        <strong id="webdav-last-error">暂无</strong>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+        </section>
+
+        <section class="card">
+            <div class="card-title">API 配置</div>
+            <div class="card-note">用于配置大语言模型 API 参数，直接通过AI直接生成笔记。</div>
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label for="api-url">API Base URL</label>
+                    <input type="text" id="api-url" placeholder="https://api.openai.com/v1">
+                    <div class="form-hint">支持 OpenAI、DeepSeek、ChatAnyWhere 等兼容接口。</div>
+                </div>
+                <div class="form-group">
+                    <label for="api-key">API Key</label>
+                    <input type="password" id="api-key" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label for="api-model">模型名称</label>
+                    <input type="text" id="api-model" placeholder="gpt-4o">
+                </div>
+            </div>
+
+            <div class="actions-row" style="margin-top: 12px;">
+                <button class="btn btn-secondary" id="btn-reset-api">恢复默认</button>
+                <button class="btn btn-primary" id="btn-save-api">保存 API 配置</button>
+            </div>
+        </section>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="../shared/storage.js"></script>
+    <script src="../shared/messaging.js"></script>
+    <script src="../shared/problem-data/constants.js"></script>
+    <script src="../shared/problem-data/helpers.js"></script>
+    <script src="../shared/problem-data/sync-core.js"></script>
+    <script src="../shared/problem-data/records.js"></script>
+    <script src="../shared/problem-data/importers/hot100.js"></script>
+    <script src="../shared/problem-data/lists.js"></script>
+    <script src="../shared/problem-data/providers/chrome-sync.js"></script>
+    <script src="../shared/problem-data/providers/nutstore-webdav.js"></script>
+    <script src="../shared/problem-data/index.js"></script>
+    <script src="../shared/problem-data.js"></script>
+    <script src="options.js"></script>
+</body>
+
+</html>

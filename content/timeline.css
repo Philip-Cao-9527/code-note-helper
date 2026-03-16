@@ -1,0 +1,275 @@
+/* AI 对话时间轴 样式（已废弃：1.0.32 起不再被 manifest.json 注入） */
+
+:root {
+    --tl-dot-color: #D1D5DB;
+    --tl-dot-active: #6128FF;
+    --tl-star-color: #FF7D03;
+    --tl-bar-bg: rgba(246, 246, 248, 0.85);
+    --tl-dot-size: 14px;
+    --tl-dot-size-compact: 10px;
+    --tl-track-padding: 16px;
+    --tl-tooltip-bg: #0d0d0d;
+    --tl-tooltip-text: #ffffff;
+    --tl-tooltip-radius: 12px;
+}
+
+html.dark {
+    --tl-dot-color: #E5E7EB;
+    /* 更亮的节点颜色 */
+    --tl-bar-bg: rgba(50, 50, 50, 0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --tl-dot-color: #E5E7EB;
+        /* 更亮的节点颜色 */
+        --tl-bar-bg: rgba(50, 50, 50, 0.85);
+    }
+}
+
+/* Gemini Specific Dark Mode Overrides */
+body[data-theme='dark'],
+body.dark-mode,
+.dark-theme,
+[class*="dark-mode"],
+/* Claude镜像站深色模式 - 检测 body 背景色 */
+html[style*="color-scheme: dark"],
+body[style*="background-color: rgb(18"],
+body[style*="background-color: rgb(20"],
+body[style*="background-color: rgb(23"],
+body[style*="background-color: rgb(32"],
+body[style*="background: rgb(18"],
+body[style*="background: rgb(20"],
+body[style*="background: rgb(23"],
+body[style*="background: rgb(32"],
+/* AiMonkey Claude镜像站深色模式检测 */
+[data-theme="dark"],
+[data-color-mode="dark"],
+.dark,
+.theme-dark {
+    --tl-dot-color: #E5E7EB;
+    /* 更亮的节点颜色，提高深色模式下可见性 */
+    --tl-bar-bg: rgba(80, 80, 85, 0.9);
+}
+
+.ai-timeline-bar {
+    position: fixed;
+    width: 28px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 14px;
+    background-color: var(--tl-bar-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background-color 0.3s ease;
+    overflow: hidden;
+}
+
+.ai-timeline-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+}
+
+.ai-timeline-track::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.ai-timeline-track-content {
+    position: relative;
+    width: 100%;
+    min-height: 100%;
+}
+
+.ai-timeline-node {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1;
+}
+
+.ai-timeline-node::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--tl-dot-size);
+    height: var(--tl-dot-size);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background-color: var(--tl-dot-color);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.ai-timeline-track-content.compact .ai-timeline-node::after {
+    width: var(--tl-dot-size-compact);
+    height: var(--tl-dot-size-compact);
+}
+
+.ai-timeline-node:hover::after {
+    transform: translate(-50%, -50%) scale(1.2);
+}
+
+.ai-timeline-node:not(.active):not(.marked):hover::after {
+    background-color: #999999;
+}
+
+.ai-timeline-node.active::after {
+    box-shadow: 0 0 0 3px var(--tl-dot-active), 0 0 8px var(--tl-dot-active);
+}
+
+.ai-timeline-node.marked::after {
+    background-color: var(--tl-star-color);
+    border-radius: 0;
+    width: 22px;
+    height: 22px;
+    clip-path: polygon(50% 8.33%, 62.875% 34.42%, 91.67% 38.63%, 70.83% 58.92%,
+            75.75% 87.58%, 50% 74.04%, 24.25% 87.58%, 29.17% 58.92%,
+            8.33% 38.63%, 37.125% 34.42%);
+}
+
+.ai-timeline-track-content.compact .ai-timeline-node.marked::after {
+    width: 22px;
+    height: 22px;
+}
+
+.ai-timeline-node.marked.active::after {
+    box-shadow: 0 0 0 5px var(--tl-dot-active), 0 0 8px var(--tl-dot-active);
+}
+
+.ai-timeline-tooltip {
+    position: fixed;
+    max-width: 320px;
+    min-width: 120px;
+    background-color: var(--tl-tooltip-bg);
+    color: var(--tl-tooltip-text);
+    padding: 12px 16px;
+    border-radius: var(--tl-tooltip-radius);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    z-index: 2147483647;
+    overflow: visible;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+    word-break: break-word;
+}
+
+.ai-timeline-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.ai-timeline-tooltip::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: var(--tl-tooltip-bg);
+    transform: rotate(45deg);
+    right: -6px;
+    top: 50%;
+    margin-top: -6px;
+}
+
+.ai-timeline-tooltip-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    opacity: 0.7;
+}
+
+.ai-timeline-tooltip-text {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.ai-timeline-tooltip-copy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    width: 100%;
+}
+
+.ai-timeline-tooltip-copy:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.ai-timeline-tooltip-copy:active {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.ai-timeline-tooltip-copy.copied {
+    background: #22c55e;
+}
+
+.ai-timeline-tooltip-copy svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+@keyframes pressRing {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
+}
+
+.ai-timeline-node.pressing::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--tl-dot-size);
+    height: var(--tl-dot-size);
+    border-radius: 50%;
+    border: 2px solid var(--tl-star-color);
+    transform: translate(-50%, -50%);
+    animation: pressRing 0.5s ease-out forwards;
+}
+
+.ai-timeline-indicator {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: var(--tl-dot-color);
+    opacity: 0.5;
+}

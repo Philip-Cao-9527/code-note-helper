@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>笔记本 - CodeNote Helper</title>
+  <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="notes.css">
+</head>
+
+<body class="layout-split">
+  <div class="notes-backdrop-glow" aria-hidden="true"></div>
+  <div class="notes-app">
+    <aside class="notebook-pane">
+      <div class="notebook-header">
+        <div class="notebook-title" id="notebook-title">题目笔记</div>
+        <div class="notebook-meta" id="notebook-meta">加载中...</div>
+        <div class="notebook-filters">
+          <input id="notebook-search" class="notebook-search" type="text" placeholder="搜索题目名称、标识或链接">
+          <div class="notebook-filter-row">
+            <select id="notebook-status-filter" class="notebook-select" aria-label="笔记状态筛选">
+              <option value="all">全部状态</option>
+              <option value="saved">已保存</option>
+              <option value="unsaved">未写笔记</option>
+            </select>
+            <select id="notebook-sort-mode" class="notebook-select" aria-label="笔记排序方式">
+              <option value="updated_desc">最近更新优先</option>
+              <option value="updated_asc">最早更新优先</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="notebook-list" id="notebook-list"></div>
+    </aside>
+
+    <main class="workspace-pane">
+      <header class="workspace-header">
+        <div class="workspace-title-wrap">
+          <div class="workspace-title" id="note-title">未命名题目</div>
+          <div class="workspace-subtitle" id="note-subtitle">尚未加载记录</div>
+        </div>
+        <div class="workspace-actions">
+          <button class="ghost-btn" id="toggle-layout-btn" type="button">仅预览</button>
+          <button class="ghost-btn" id="open-problem-btn" type="button">打开题目</button>
+          <button class="ghost-btn" id="export-notes-btn" type="button">导出全部笔记</button>
+          <button class="primary-btn" id="save-note-btn" type="button">保存当前笔记</button>
+        </div>
+      </header>
+
+      <section class="editor-body">
+        <div class="panel editor-panel">
+          <div class="panel-title">Markdown 源文</div>
+          <textarea id="note-editor" placeholder="在这里输入你的题目笔记，支持 Markdown、代码块和公式。"></textarea>
+        </div>
+
+        <div class="panel preview-panel">
+          <div class="panel-title">渲染预览</div>
+          <div class="note-preview" id="note-preview"></div>
+        </div>
+      </section>
+
+      <footer class="workspace-footer">
+        <span id="save-status" aria-live="polite">准备就绪</span>
+      </footer>
+      <div id="save-toast" class="save-toast" role="status" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <script src="../shared/storage.js"></script>
+  <script src="../shared/problem-data/constants.js"></script>
+  <script src="../shared/problem-data/helpers.js"></script>
+  <script src="../shared/problem-data/sync-core.js"></script>
+  <script src="../shared/problem-data/records.js"></script>
+  <script src="../shared/problem-data/importers/hot100.js"></script>
+  <script src="../shared/problem-data/lists.js"></script>
+  <script src="../shared/problem-data/providers/chrome-sync.js"></script>
+  <script src="../shared/problem-data/providers/nutstore-webdav.js"></script>
+  <script src="../shared/problem-data/index.js"></script>
+  <script src="../shared/problem-data.js"></script>
+  <script src="../content/leetcode/core/markdown-render.js?v=1.0.66"></script>
+  <script src="../vendor/katex/katex.min.js"></script>
+  <script src="../vendor/katex/contrib/auto-render.min.js"></script>
+  <script src="notes.js?v=1.0.69"></script>
+</body>
+
+</html>

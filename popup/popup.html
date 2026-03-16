@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeNote Helper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-top">
+        <div>
+          <div class="brand-title">CodeNote Helper</div>
+          <div class="brand-subtitle">题目记录、题单进度和常用入口都集中在这里。</div>
+        </div>
+        <div class="version-pill" id="version-text">v1.0.69</div>
+      </div>
+    </header>
+
+    <nav class="nav">
+      <button class="nav-btn active" data-view="overview-view">概览</button>
+      <button class="nav-btn" data-view="problems-view">题目</button>
+      <button class="nav-btn" data-view="lists-view">题单</button>
+    </nav>
+
+    <main class="main">
+      <section class="view active" id="overview-view">
+        <div class="card">
+          <div class="section-title">题目摘要</div>
+          <div class="summary-grid" id="overview-summary"></div>
+        </div>
+
+        <button class="primary-btn" id="open-settings">设置与同步</button>
+      </section>
+
+      <section class="view" id="problems-view">
+        <div class="card">
+          <div class="section-title">题目</div>
+          <div class="section-note">这里会显示你保存过笔记或用插件处理过的题目。</div>
+          <div class="filter-row">
+            <input class="search-input" id="problems-search" type="text" placeholder="搜索题目名称或题目标识">
+            <select class="filter-select" id="problems-status-filter" aria-label="题目状态筛选">
+              <option value="all">全部状态</option>
+              <option value="prompt">已处理</option>
+              <option value="generated">已生成</option>
+              <option value="saved">已保存</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="list-shell" id="problems-list"></div>
+          <div id="problems-pagination"></div>
+        </div>
+      </section>
+
+      <section class="view" id="lists-view">
+        <div class="card">
+          <div class="section-title">导入题单</div>
+          <div class="section-note">你可以一键导入 Hot100，也可以继续粘贴题单链接扩展来源。</div>
+          <div class="toolbar">
+            <div class="toolbar-row">
+              <button class="secondary-btn" id="import-hot100">导入 Hot100</button>
+            </div>
+            <div class="toolbar-row">
+              <input class="url-input" id="list-import-url" type="text" placeholder="粘贴题单链接">
+              <button class="secondary-btn" id="import-list-url">按链接导入</button>
+            </div>
+            <div class="import-status" id="list-import-status" aria-live="polite" hidden></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">题单</div>
+          <div class="section-note">支持折叠查看、简单检索和分页浏览，方便列表变长后继续使用。</div>
+          <div class="filter-row">
+            <input class="search-input" id="lists-search" type="text" placeholder="搜索题目名或题号">
+            <select class="filter-select" id="lists-status-filter" aria-label="题单状态筛选">
+              <option value="all">全部状态</option>
+              <option value="completed">已完成</option>
+              <option value="pending">未记录</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="lists-summary"></div>
+        <div class="list-shell" id="problem-lists"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <button class="footer-btn" id="open-github-home">GitHub 项目主页</button>
+        <button class="footer-btn" id="open-github-issues">Issue 反馈</button>
+      </div>
+      <div class="footer-note" id="footer-note">本地默认存储，支持云同步；在“设置与同步”管理。</div>
+    </footer>
+
+    <button class="sync-indicator" id="sync-indicator-btn" type="button" hidden title="同步已关闭">
+      <span class="sync-indicator-icon-wrap">
+        <span class="sync-indicator-icon" id="sync-indicator-icon">⟳</span>
+      </span>
+      <span class="sync-indicator-text" id="sync-indicator-text">已同步</span>
+    </button>
+  </div>
+
+  <div class="toast" id="popup-toast"></div>
+  <div class="confirm-overlay" id="popup-confirm-overlay" aria-hidden="true">
+    <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="popup-confirm-title">
+      <div class="confirm-title" id="popup-confirm-title">确认删除</div>
+      <div class="confirm-message" id="popup-confirm-message">删除后无法恢复，是否继续？</div>
+      <div class="confirm-actions">
+        <button class="ghost-btn confirm-btn" id="popup-confirm-cancel" type="button">取消</button>
+        <button class="secondary-btn confirm-btn danger" id="popup-confirm-ok" type="button">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/storage.js"></script>
+  <script src="../shared/problem-data/constants.js"></script>
+  <script src="../shared/problem-data/helpers.js"></script>
+  <script src="../shared/problem-data/sync-core.js"></script>
+  <script src="../shared/problem-data/records.js"></script>
+  <script src="../shared/problem-data/importers/hot100.js"></script>
+  <script src="../shared/problem-data/lists.js"></script>
+  <script src="../shared/problem-data/providers/chrome-sync.js"></script>
+  <script src="../shared/problem-data/providers/nutstore-webdav.js"></script>
+  <script src="../shared/problem-data/index.js"></script>
+  <script src="../shared/problem-data.js"></script>
+  <script src="state.js"></script>
+  <script src="render-overview.js"></script>
+  <script src="render-problems.js"></script>
+  <script src="render-lists.js"></script>
+  <script src="actions.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>
