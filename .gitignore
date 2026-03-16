@@ -48,6 +48,9 @@ tests/
 docs/
 DEVLOG.md
 
+# 保存上传浏览器插件所需要的材料，例如插件截图、描述文件等（不公开）
+extension_upload_files/
+
 # 仅供参考的外部项目目录（非运行时必需）
 references/
 
