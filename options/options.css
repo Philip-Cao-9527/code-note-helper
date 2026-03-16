@@ -305,3 +305,14 @@ input[type="file"] {
     grid-template-columns: 1fr;
   }
 }
+
+.sync-dirty-hint {
+    margin-top: 14px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #d97706;
+    font-size: 13px;
+    line-height: 1.5;
+}

@@ -55,8 +55,8 @@
             <div id="cloud-sync-section">
             <div class="switch-row" style="margin-top: 18px;">
                 <div class="switch-copy">
-                    <div class="switch-title">Chrome Sync</div>
-                    <div class="switch-desc">用于同步轻量状态。请在浏览器中登录账号并开启同步后使用。</div>
+                    <div class="switch-title">Cloud Sync</div>
+                    <div class="switch-desc">基于浏览器自带的同步服务进行轻量同步。请先在浏览器中登录账号并开启同步。</div>
                 </div>
                 <label class="switch">
                     <input type="checkbox" id="chrome-sync-toggle">
@@ -125,7 +125,6 @@
                 </div>
 
                 <div class="actions-row" style="margin-top: 12px;">
-                    <button class="btn btn-secondary" id="btn-save-sync">保存同步设置</button>
                     <button class="btn btn-secondary" id="btn-test-webdav">测试连接</button>
                     <button class="btn btn-secondary" id="btn-backup-webdav">立即备份</button>
                     <button class="btn btn-secondary" id="btn-restore-webdav">从云端恢复</button>
@@ -153,6 +152,12 @@
                         <strong id="webdav-last-error">暂无</strong>
                     </div>
                 </div>
+            </div>
+
+            <!-- 未保存提示 + 保存按钮：始终在同步区域最底部 -->
+            <div class="sync-dirty-hint" id="sync-dirty-hint" style="display: none;">同步设置已修改，请点击下方按钮保存。</div>
+            <div class="actions-row" style="margin-top: 12px;">
+                <button class="btn btn-primary" id="btn-save-sync">保存同步设置</button>
             </div>
             </div>
 

@@ -6,7 +6,7 @@
 
 一个 Chrome / Edge 浏览器扩展，让代码刷题、复盘、记笔记这件事变得不再繁琐。
 
-![Version](https://img.shields.io/badge/version-1.0.69-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome MV3](https://img.shields.io/badge/Chrome-MV3-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.70-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome MV3](https://img.shields.io/badge/Chrome-MV3-brightgreen)
 
 [功能亮点](#-功能亮点) · [快速开始](#-快速开始) · [使用指南](#-使用指南) · [API 配置](#-api-配置) · [English](#-english)
 
@@ -134,7 +134,7 @@ git clone https://github.com/Philip-Cao-9527/code-note-helper.git
 
 所有数据默认保存在浏览器本地，不联网也能正常使用。如果你需要在多台设备之间同步数据，可以选择以下方式：
 
-- **Cloud Sync** —— 基于浏览器自带的同步服务（Chrome Sync / Edge Sync）进行轻量级同步。适合日常使用，大约可以保存 150 条左右的笔记记录。不需要额外配置账号，只要浏览器登录了同步账户就能用。
+- **Cloud Sync** —— 基于浏览器自带的同步服务进行轻量级同步。适合日常使用，大约可以保存 150 条左右的笔记记录。不需要额外配置账号，只要浏览器登录了同步账户就能用。
 - **坚果云 WebDAV** —— 完整备份方案，会将所有数据（记录、题单、笔记内容等）打包上传到你的坚果云 WebDAV 空间。没有条数限制，适合数据量较大或需要完整备份恢复的场景。默认备份路径为 `CodeNote-Helper/backups/full-backup.json`。
 - **JSON 导入 / 导出** —— 最简单的备份方式，手动导出一份 JSON 文件保存到本地，需要时随时导入恢复。适合不想配置云同步、偶尔手动备份一下的用户。
 

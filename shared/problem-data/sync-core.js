@@ -445,7 +445,7 @@
             if (chromeSyncEnabled) {
                 const chromeResult = await runProviderWithRetry('chromeSync', async () => {
                     if (!modules.providers || typeof modules.providers.runChromeSync !== 'function') {
-                        const providerError = new Error('Chrome Sync 提供方未加载');
+                        const providerError = new Error('Cloud Sync 提供方未加载');
                         providerError.provider = 'chromeSync';
                         providerError.errorType = 'provider-missing';
                         throw providerError;
@@ -510,7 +510,7 @@
             if (error && error.provider === 'webdav') {
                 await markSyncError('webdav', error, '坚果云同步失败');
             } else if (error && error.provider === 'chromeSync') {
-                await markSyncError('chromeSync', error, 'Chrome Sync 同步失败');
+                await markSyncError('chromeSync', error, 'Cloud Sync 同步失败');
             }
 
             notifySyncListeners({
@@ -800,10 +800,10 @@
         const chromeSyncHint = syncDisabled
             ? '云同步功能已在当前版本临时禁用。'
             : !syncProbe.available
-            ? '当前环境暂不支持 Chrome Sync。'
+            ? '当前环境暂不支持 Cloud Sync。'
             : settings.chromeSyncEnabled
-                ? '已启用 Chrome Sync，请确保浏览器已登录并开启同步。'
-                : '尚未启用 Chrome Sync，开启后可同步轻量状态。';
+                ? '已启用 Cloud Sync，请确保浏览器已登录并开启同步。'
+                : '尚未启用 Cloud Sync，开启后可同步轻量状态。';
 
         return {
             cloudSyncTemporarilyDisabled: syncDisabled,

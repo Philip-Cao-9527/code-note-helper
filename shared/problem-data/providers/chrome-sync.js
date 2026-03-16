@@ -1,5 +1,5 @@
 ﻿/**
- * Chrome Sync 轻量同步提供方
+ * Cloud Sync 轻量同步提供方
  * 版本：1.0.43
  */
 
@@ -26,7 +26,7 @@
     function ensureSyncStorageApi() {
         const syncApi = helpers.getSyncStorageApi();
         if (!syncApi) {
-            const error = new Error('当前环境不支持 Chrome Sync');
+            const error = new Error('当前环境不支持 Cloud Sync');
             error.errorType = 'sync-api-unavailable';
             throw error;
         }
@@ -57,7 +57,7 @@
 
         const payload = helpers.safeJsonParse(serialized);
         if (!payload) {
-            const error = new Error('Chrome Sync 云端数据解析失败');
+            const error = new Error('Cloud Sync 云端数据解析失败');
             error.errorType = 'payload-parse-failed';
             throw error;
         }
@@ -75,7 +75,7 @@
         }
 
         if (chunks.length > CHROME_SYNC_MAX_CHUNKS) {
-            const error = new Error('Chrome Sync 数据体积过大，请改用坚果云完整备份');
+            const error = new Error('Cloud Sync 数据体积过大，请改用坚果云完整备份');
             error.errorType = 'payload-too-large';
             throw error;
         }
@@ -203,7 +203,7 @@
                 silent: true,
                 reason: `queued:${nextReason}`
             }).catch((error) => {
-                console.warn('[ProblemData] 排队 Chrome Sync 失败：', error);
+                console.warn('[ProblemData] 排队 Cloud Sync 失败：', error);
             });
         }, 0);
     }
@@ -242,14 +242,14 @@
             const nextPayload = buildCloudPayload(bundle);
             await writeCloudPayload(nextPayload);
 
-            await syncCore.markSyncSuccess('chromeSync', 'Chrome Sync 同步完成');
+            await syncCore.markSyncSuccess('chromeSync', 'Cloud Sync 同步完成');
             return {
                 enabled: true,
                 syncedAt: new Date().toISOString(),
                 reason: config.reason
             };
         } catch (error) {
-            await syncCore.markSyncError('chromeSync', error, 'Chrome Sync 同步失败');
+            await syncCore.markSyncError('chromeSync', error, 'Cloud Sync 同步失败');
             if (config.silent) {
                 return {
                     enabled: true,

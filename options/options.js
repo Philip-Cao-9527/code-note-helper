@@ -1,6 +1,6 @@
 /**
  * 高级设置页脚本
- * 版本：1.0.67
+ * 版本：1.0.70
  */
 
 (function () {
@@ -101,6 +101,32 @@
         if (elements.webdavSettingsPanel) {
             elements.webdavSettingsPanel.style.display = 'none';
         }
+
+        // 同步设置未保存状态追踪
+        const syncDirtyHint = document.getElementById('sync-dirty-hint');
+        let syncDirty = false;
+
+        function markSyncDirty() {
+            if (syncDirty) return;
+            syncDirty = true;
+            if (syncDirtyHint) {
+                syncDirtyHint.style.display = '';
+            }
+        }
+
+        function clearSyncDirty() {
+            syncDirty = false;
+            if (syncDirtyHint) {
+                syncDirtyHint.style.display = 'none';
+            }
+        }
+
+        // 离开页面前如果有未保存的同步设置变更，弹出确认
+        window.addEventListener('beforeunload', (event) => {
+            if (!syncDirty) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
 
         function setBusy(button, busy) {
             if (!button) return;
@@ -206,6 +232,7 @@
                 elements.chromeSyncToggle.checked = false;
                 elements.webdavToggle.checked = false;
                 applyWebdavPanelVisibility(true);
+                clearSyncDirty();
                 return;
             }
 
@@ -231,6 +258,7 @@
             elements.webdavLastStatus.textContent = formatStatusText(overview.webdavLastStatus);
             elements.webdavLastError.textContent = overview.webdavLastError?.message || '暂无';
             applyWebdavPanelVisibility(syncDisabled);
+            clearSyncDirty();
         }
 
         async function refreshView() {
@@ -300,8 +328,25 @@
         if (elements.webdavToggle) {
             elements.webdavToggle.addEventListener('change', () => {
                 applyWebdavPanelVisibility(isCloudSyncTemporarilyDisabled());
+                markSyncDirty();
             });
         }
+
+        // Cloud Sync 开关变更也标记 dirty
+        if (elements.chromeSyncToggle) {
+            elements.chromeSyncToggle.addEventListener('change', () => {
+                markSyncDirty();
+            });
+        }
+
+        // 坚果云表单输入变更标记 dirty
+        [elements.webdavEmail, elements.webdavPassword, elements.webdavRemotePath].forEach((input) => {
+            if (input) {
+                input.addEventListener('input', () => {
+                    markSyncDirty();
+                });
+            }
+        });
 
         elements.btnExportJson.addEventListener('click', async () => {
             try {
@@ -349,6 +394,7 @@
                     await store.runChromeSync({ reason: 'settings-save', silent: true });
                 }
                 await loadSyncSection();
+                clearSyncDirty();
                 showToast('同步设置已保存');
             } catch (error) {
                 console.error('[Options] 保存同步设置失败：', error);
@@ -365,17 +411,17 @@
                 await saveSyncSettings();
                 const result = await store.runChromeSync({ reason: 'manual' });
                 if (!result.enabled) {
-                    showToast('请先启用 Chrome Sync');
+                    showToast('请先启用 Cloud Sync');
                 } else if (result.queued) {
                     showToast('已有同步任务在执行，已加入队列');
                 } else if (result.error) {
                     showToast(`同步失败：${result.error}`, 3000);
                 } else {
-                    showToast('Chrome Sync 已完成');
+                    showToast('Cloud Sync 已完成');
                 }
                 await loadSyncSection();
             } catch (error) {
-                console.error('[Options] 执行 Chrome Sync 失败：', error);
+                console.error('[Options] 执行 Cloud Sync 失败：', error);
                 showToast(error.message || '同步失败，请稍后重试', 2600);
             } finally {
                 setBusy(elements.btnRunChromeSync, false);
