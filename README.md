@@ -163,7 +163,7 @@
 最简单的物理备份方式。手动导出一份 JSON 文件保存到本地，随时可以导入恢复。适合不想折腾云服务、偶尔手动备份的用户。
 
 ### 🚫 关于 Cloud Sync 的说明
-**现阶段该功能存在bug**，强烈建议大家优先使用坚果云进行备份。
+**支持轻量备份，容量大概在150题左右，现阶段该功能存在bug**，强烈建议优先使用坚果云进行备份。
 
 ---
 
@@ -206,6 +206,9 @@
 - 🐛 [报告 Bug 或功能建议](https://github.com/Philip-Cao-9527/code-note-helper/issues)
 
 ---
+## 🙏致谢
+- [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) - 参考了该项目的部分数据同步设计，也可以搭配该项目使用，同步复习力扣
+---
 
 ## 📜 License
 
@@ -231,6 +234,9 @@
 
 ### Privacy & Data
 All your notes and progress stay in your local browser by default. Optional features like Nutstore WebDAV backup and API generation only connect to your personal cloud storage or the AI models you configure. No data is ever collected by the developer.
+
+### 🙏Acknowledgments
+- [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) — inspiration for the data sync design and a great companion project for LeetCode review workflows.
 
 ### License
 [MIT](./LICENSE) © 2026 cao
