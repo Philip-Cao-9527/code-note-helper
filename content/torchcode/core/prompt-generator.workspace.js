@@ -1,6 +1,6 @@
 /**
  * TorchCode Prompt 生成器（Workspace/HuggingFace）
- * 版本：1.0.54
+ * 版本：1.0.8
  */
 
 (function () {
@@ -22,10 +22,81 @@
         ]);
     }
 
+    function resolvePrimaryLink(data) {
+        const links = data && data.links ? data.links : {};
+        const first = Object.values(links).find((value) => String(value || '').trim());
+        return String(first || data.sourceUrl || '').trim();
+    }
+
+    function generateWorkspaceQaPrompt(data, shared) {
+        const headingLevel = data.headingLevel || '##';
+        const levelNum = shared.headingLevelToNumber(headingLevel);
+        const h1 = '#'.repeat(levelNum);
+        const h2 = '#'.repeat(levelNum + 1);
+        const userLevel = data.userLevel || '小白';
+        const levelGuide = shared.USER_LEVEL_GUIDE[userLevel] || shared.USER_LEVEL_GUIDE['小白'];
+        const noteTitle = data.noteTitle || data.taskTitle || 'TorchCode 练习';
+        const link = resolvePrimaryLink(data);
+
+        return `你是互联网大厂资深深度学习工程师。当前是“仅答疑”模式：请直接进入问题解答，避免冗长前置章节。
+
+用户水平：${userLevel}
+讲解风格：${levelGuide.style}
+
+【输出结构（必须严格遵守）】
+${shared.buildHeading(h1, noteTitle)}
+${shared.buildHeading(h2, '题目信息')}
+- 题目名称：${data.taskTitle || noteTitle}
+- 题目链接：${link ? `[点击跳转](${link})` : '未提供'}
+
+${shared.buildHeading(h2, '题目内容最简复述')}
+[仅保留核心目标、关键约束和输入输出要点，不输出完整笔记大纲]
+
+${shared.buildHeading(h2, '当前用户题解')}
+\`\`\`python
+${shared.escapeFence(data.currentCode || data.starterCode || '未提供')}
+\`\`\`
+
+${shared.buildHeading(h2, '用户疑问与体会原文')}
+${shared.buildQaOnlyUserNotesBlock(data.notes)}
+
+${shared.buildHeading(h2, '逐条答疑（必须详细）')}
+1. [结论] + [原因] + [具体步骤] + [边界/反例] + [常见误区]
+2. [继续逐条回答，每条都要落到用户原文对应的问题点]
+[每条答疑不少于 180 字；若用户原文有 N 个疑问，至少输出 N 条答疑，不得合并]
+[“逐条答疑”总字数不少于 520 字；若用户原文为空，也要输出不少于 320 字的问题拆解与建议]
+
+${shared.buildHeading(h2, '必要代码（按需）')}
+[只有在疑问需要代码时，才输出完整可运行代码块；不需要代码时明确写“本题当前疑问无需新增代码”。]
+
+【原始输入（输入项保持原样）】
+- 练习标题：${data.taskTitle || '未提供'}
+- 难度：${data.difficulty || '未标注'}
+- 签名：${data.signature || '未提供'}
+- 题目摘要：${data.summary || '未提供'}
+- 规则与限制：${data.rules || '未提供'}
+- 示例：${data.example || '未提供'}
+- 当前来源：${data.sourceLabel || 'TorchCode 工作区'}
+- 当前页面：${data.sourceUrl || ''}
+- 参考实现：${(Array.isArray(data.referenceImplementations) && data.referenceImplementations.length) || String(data.referenceCode || '').trim() ? '已提供' : '未提供'}
+
+【强制规则】
+1. 只展示一个题目名称与一个题目链接。
+2. 若用户疑问原文非空，必须逐字原样输出原文；未原文输出视为失败。
+3. 答疑必须逐条对应用户问题，不得只写概述；每条都必须包含“结论、原因、步骤、边界/反例、常见误区”。
+4. 仅在必要时输出完整代码块，避免无关代码堆砌。
+5. “逐条答疑”总字数必须达标：非空疑问不少于 520 字；空疑问不少于 320 字。
+6. 直接输出 Markdown 正文，不要输出“好的/当然可以/下面开始”等套话。`;
+    }
+
     function generateWorkspacePrompt(data) {
         const shared = getSharedModule();
         if (!shared) {
             return 'TorchCode Prompt 共享模块未加载，请刷新页面后重试。';
+        }
+
+        if (String(data.noteMode || '').trim() === 'qa_only') {
+            return generateWorkspaceQaPrompt(data, shared);
         }
 
         const headingLevel = data.headingLevel || '##';

@@ -16,7 +16,7 @@
           <div class="brand-title">CodeNote Helper</div>
           <div class="brand-subtitle">题目记录、题单进度和常用入口都集中在这里。</div>
         </div>
-        <div class="version-pill" id="version-text">v1.0.70</div>
+        <div class="version-pill" id="version-text">v1.0.8</div>
       </div>
     </header>
 
@@ -44,6 +44,7 @@
             <input class="search-input" id="problems-search" type="text" placeholder="搜索题目名称或题目标识">
             <select class="filter-select" id="problems-status-filter" aria-label="题目状态筛选">
               <option value="all">全部状态</option>
+              <option value="none">仅入库</option>
               <option value="prompt">已处理</option>
               <option value="generated">已生成</option>
               <option value="saved">已保存</option>
@@ -81,7 +82,7 @@
             <select class="filter-select" id="lists-status-filter" aria-label="题单状态筛选">
               <option value="all">全部状态</option>
               <option value="completed">已完成</option>
-              <option value="pending">未记录</option>
+              <option value="pending">未匹配</option>
             </select>
           </div>
         </div>

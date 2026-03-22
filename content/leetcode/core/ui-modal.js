@@ -1,6 +1,6 @@
 /**
  * LeetCode 笔记助手 UI 模块
- * 版本：1.0.69
+ * 版本：1.0.8
  */
 
 (function () {
@@ -28,6 +28,12 @@
     let hasWarnedMissingRecommendationHelper = false;
     let hasWarnedStorageUnavailable = false;
     let hasWarnedProblemDataUnavailable = false;
+    let submissionObserver = null;
+    let submissionRouteHooked = false;
+    let submitIntentCaptureBound = false;
+    const trackedSubmissionCache = new Set();
+    const trackingSubmissionInFlight = new Set();
+    const submitIntentMemoryCache = new Map();
 
     const ICON_DRAG_LONG_PRESS_MS = 500;
     const ICON_DRAG_MOVE_THRESHOLD_PX = 12;
@@ -212,6 +218,277 @@
             console.warn('[Note Helper] 记录题目行为失败:', actionType, e);
             return null;
         }
+    }
+
+    function getSubmissionIdentity() {
+        const identity = getProblemIdentity(window.location.pathname);
+        if (!identity || !identity.submissionId) return null;
+        return identity;
+    }
+
+    function getProblemIdentity(pathname = window.location.pathname) {
+        const host = String(window.location.hostname || '').toLowerCase();
+        if (!host.includes('leetcode.cn') && !host.includes('leetcode.com')) return null;
+        const normalizedPath = String(pathname || '');
+        const match = normalizedPath.match(/\/problems\/([^\/?#]+)(?:\/submissions\/(\d+))?/i);
+        if (!match) return null;
+        return {
+            host,
+            slug: match[1],
+            submissionId: match[2] || ''
+        };
+    }
+
+    function buildSubmissionTrackKey(identity) {
+        if (!identity) return '';
+        return `${identity.host}:${identity.slug}:${identity.submissionId}`;
+    }
+
+    function buildSubmitIntentKey(identity) {
+        if (!identity) return '';
+        return `${identity.host}:${identity.slug}`;
+    }
+
+    function readSubmitIntent(intentKey) {
+        if (!intentKey) return null;
+        const cached = submitIntentMemoryCache.get(intentKey);
+        if (cached) return { ...cached };
+        try {
+            const raw = sessionStorage.getItem(`note_helper_submit_intent_${intentKey}`);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') return null;
+            submitIntentMemoryCache.set(intentKey, parsed);
+            return { ...parsed };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function writeSubmitIntent(intentKey, payload) {
+        if (!intentKey || !payload || typeof payload !== 'object') return;
+        submitIntentMemoryCache.set(intentKey, { ...payload });
+        try {
+            sessionStorage.setItem(`note_helper_submit_intent_${intentKey}`, JSON.stringify(payload));
+        } catch (error) {
+            // sessionStorage 在隐私模式下可能不可写，降级为内存缓存。
+        }
+    }
+
+    function clearSubmitIntent(intentKey) {
+        if (!intentKey) return;
+        submitIntentMemoryCache.delete(intentKey);
+        try {
+            sessionStorage.removeItem(`note_helper_submit_intent_${intentKey}`);
+        } catch (error) {
+            // 忽略会话存储删除失败，仅保留内存删除结果。
+        }
+    }
+
+    function isSubmitButtonElement(target) {
+        if (!target || typeof target.closest !== 'function') return false;
+        const button = target.closest('button,[role="button"]');
+        if (!button) return false;
+        const text = String(button.textContent || '').replace(/\s+/g, '').trim();
+        const ariaLabel = String(button.getAttribute('aria-label') || '').replace(/\s+/g, '').trim();
+        const title = String(button.getAttribute('title') || '').replace(/\s+/g, '').trim();
+        const locator = String(button.getAttribute('data-e2e-locator') || '').toLowerCase();
+        if (/^(提交|submit)$/i.test(text) || /^(提交|submit)$/i.test(ariaLabel) || /^(提交|submit)$/i.test(title)) {
+            return true;
+        }
+        if (locator === 'console-submit-button') {
+            return true;
+        }
+        return false;
+    }
+
+    function markSubmitIntent(trigger = 'submit_click') {
+        const identity = getProblemIdentity(window.location.pathname);
+        if (!identity || identity.submissionId) return;
+        const intentKey = buildSubmitIntentKey(identity);
+        if (!intentKey) return;
+        writeSubmitIntent(intentKey, {
+            host: identity.host,
+            slug: identity.slug,
+            submissionId: '',
+            sourceUrl: window.location.href,
+            trigger,
+            createdAt: Date.now()
+        });
+    }
+
+    function resolveSubmitIntentForSubmission(identity) {
+        const intentKey = buildSubmitIntentKey(identity);
+        if (!intentKey) return { allowed: false, intentKey: '', justBound: false };
+        const intent = readSubmitIntent(intentKey);
+        if (!intent) return { allowed: false, intentKey, justBound: false };
+        if (intent.submissionId && String(intent.submissionId) !== String(identity.submissionId)) {
+            return { allowed: false, intentKey, justBound: false };
+        }
+        let justBound = false;
+        if (!intent.submissionId) {
+            intent.submissionId = identity.submissionId;
+            writeSubmitIntent(intentKey, intent);
+            justBound = true;
+        }
+        return { allowed: true, intentKey, justBound };
+    }
+
+    function hasTrackedSubmission(trackKey) {
+        if (!trackKey) return false;
+        if (trackedSubmissionCache.has(trackKey)) return true;
+        try {
+            return sessionStorage.getItem(`note_helper_submission_passed_${trackKey}`) === '1';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function markSubmissionTracked(trackKey) {
+        if (!trackKey) return;
+        trackedSubmissionCache.add(trackKey);
+        try {
+            sessionStorage.setItem(`note_helper_submission_passed_${trackKey}`, '1');
+        } catch (error) {
+            // sessionStorage 在隐私模式下可能不可写，降级为内存去重。
+        }
+    }
+
+    function extractSubmissionProblemTitle(slug) {
+        const selectors = [
+            'div.text-title-large a',
+            '.text-title-large',
+            '[data-cy="question-title"]',
+            'div[data-track-load="title"] a'
+        ];
+        for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (!element) continue;
+            const title = String(element.textContent || '').trim().replace(/^\d+\.\s*/, '');
+            if (title) return title;
+        }
+        const rawTitle = String(document.title || '').trim();
+        if (rawTitle) {
+            const normalized = rawTitle
+                .replace(/\s*[-|｜]\s*LeetCode.*$/i, '')
+                .replace(/^\d+\.\s*/, '')
+                .trim();
+            if (normalized) return normalized;
+        }
+        return String(slug || '').trim();
+    }
+
+    function getSubmissionResultText() {
+        const candidates = [
+            '[data-e2e-locator="submission-result"]',
+            '[data-testid="submission-result"]',
+            '.text-green-s'
+        ];
+        for (const selector of candidates) {
+            const node = document.querySelector(selector);
+            if (!node) continue;
+            const text = String(node.textContent || '').trim();
+            if (text) return text;
+        }
+        return '';
+    }
+
+    function isSubmissionPassedResultVisible() {
+        const resultText = getSubmissionResultText();
+        if (/^(通过|Accepted)$/i.test(resultText)) {
+            return true;
+        }
+        return false;
+    }
+
+    async function tryTrackPassedSubmission(trigger = 'observer') {
+        const identity = getSubmissionIdentity();
+        if (!identity) return false;
+        const intentState = resolveSubmitIntentForSubmission(identity);
+        if (!intentState.allowed) return false;
+        if (intentState.justBound && trigger === 'route') return false;
+
+        const trackKey = buildSubmissionTrackKey(identity);
+        if (!trackKey || hasTrackedSubmission(trackKey)) {
+            clearSubmitIntent(intentState.intentKey);
+            return false;
+        }
+        if (trackingSubmissionInFlight.has(trackKey)) return false;
+        if (!isSubmissionPassedResultVisible()) {
+            const resultText = getSubmissionResultText();
+            if (resultText && !/^(通过|Accepted)$/i.test(resultText)) {
+                clearSubmitIntent(intentState.intentKey);
+            }
+            return false;
+        }
+
+        trackingSubmissionInFlight.add(trackKey);
+        try {
+            const actionResult = await trackCurrentProblemAction('submission_passed', {
+                title: extractSubmissionProblemTitle(identity.slug),
+                submissionId: identity.submissionId,
+                trigger
+            });
+
+            if (!actionResult) return false;
+            markSubmissionTracked(trackKey);
+            clearSubmitIntent(intentState.intentKey);
+            showToast('✅ 检测到提交通过，已自动加入题目记录', 3200);
+            return true;
+        } finally {
+            trackingSubmissionInFlight.delete(trackKey);
+        }
+    }
+
+    function bindSubmitIntentCapture() {
+        if (submitIntentCaptureBound) return;
+        submitIntentCaptureBound = true;
+        document.addEventListener('click', (event) => {
+            if (!isSubmitButtonElement(event.target)) return;
+            markSubmitIntent('submit_click');
+        }, true);
+    }
+
+    function ensureSubmissionPassedAutoTrack() {
+        const host = String(window.location.hostname || '').toLowerCase();
+        if (!host.includes('leetcode.cn') && !host.includes('leetcode.com')) return;
+        bindSubmitIntentCapture();
+
+        if (!submissionObserver) {
+            submissionObserver = new MutationObserver(() => {
+                void tryTrackPassedSubmission('mutation');
+            });
+            const observeTarget = document.body || document.documentElement;
+            if (observeTarget) {
+                submissionObserver.observe(observeTarget, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+            }
+        }
+
+        if (!submissionRouteHooked) {
+            submissionRouteHooked = true;
+            const scheduleCheck = () => {
+                void tryTrackPassedSubmission('route');
+            };
+            window.addEventListener('popstate', scheduleCheck);
+            const originalPushState = history.pushState;
+            history.pushState = function patchedPushState(...args) {
+                const result = originalPushState.apply(this, args);
+                scheduleCheck();
+                return result;
+            };
+            const originalReplaceState = history.replaceState;
+            history.replaceState = function patchedReplaceState(...args) {
+                const result = originalReplaceState.apply(this, args);
+                scheduleCheck();
+                return result;
+            };
+        }
+
+        void tryTrackPassedSubmission('init');
     }
 
     function toggleSaveResultButton(disabled) {
@@ -636,6 +913,7 @@
         "Bug 修不完没关系，头发还在就是胜利 🎉"
     ];
     function init() {
+        ensureSubmissionPassedAutoTrack();
         if (document.getElementById('note-helper-btn')) return;
 
         // 创建按钮
@@ -712,7 +990,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="p-ai-platform">生成后操作</label>
+                <label for="p-ai-platform">生成prompt后操作</label>
                 <select id="p-ai-platform">
                     <option value="copy_only">仅复制</option>
                     <option value="direct_api">⭐ 直接调用 API</option>
@@ -722,6 +1000,21 @@
                     <option value="gemini">跳转 Gemini</option>
                 </select>
             </div>
+        </div>
+
+        <div class="form-group">
+            <label for="p-note-mode">笔记模式</label>
+            <select id="p-note-mode">
+                <option value="full_note">生成完整笔记</option>
+                <option value="qa_only">仅答疑</option>
+            </select>
+            <div style="font-size:12px;color:#666;margin-top:4px">💡 仅答疑会精简输出结构，优先快速回应你的问题</div>
+        </div>
+
+        <div class="form-group">
+            <label for="btn-manual-add">添加题目</label>
+            <button class="btn btn-secondary" id="btn-manual-add" type="button" style="width:100%;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;box-shadow:0 1px 2px rgba(15,23,42,0.04)">➕ 添加题目</button>
+            <div style="font-size:12px;color:#666;margin-top:4px">将当前题目快速加入插件记录，无需先执行生成操作</div>
         </div>
 
         <div id="api-settings-panel" class="api-settings">
@@ -889,6 +1182,7 @@
             }
             document.getElementById('p-note-title').value = autoTitle;
             modal.dataset.problemTitle = autoTitle || '';
+            document.getElementById('p-note-mode').value = 'full_note';
             document.getElementById('p-feeling').value = "";
             document.getElementById('api-result-container').style.display = 'none';
             showRenderedResult("");
@@ -967,6 +1261,17 @@
 
         document.getElementById('btn-close').onclick = () => {
             closeModalAndReset();
+        };
+
+        document.getElementById('btn-manual-add').onclick = async () => {
+            const actionResult = await trackCurrentProblemAction('manual_added', {
+                title: getCurrentProblemRecordTitle()
+            });
+            if (actionResult) {
+                showToast('✅ 当前题目已加入记录', 2600);
+            } else {
+                showToast('⚠️ 当前页面暂不支持添加题目记录', 2800);
+            }
         };
 
         document.getElementById('btn-copy-result').onclick = async () => {
@@ -1141,6 +1446,7 @@ ${content}`;
             const noteTitle = document.getElementById('p-note-title').value.trim();
             const headingLevel = document.getElementById('p-level').value;
             const userLevel = document.getElementById('p-user-level').value;
+            const noteMode = document.getElementById('p-note-mode').value;
             const aiPlatform = document.getElementById('p-ai-platform').value;
             const official = document.getElementById('p-official').value;
             const notes = document.getElementById('p-feeling').value;
@@ -1171,6 +1477,7 @@ ${content}`;
                 officialSolution: official,
                 headingLevel,
                 userLevel,
+                noteMode,
                 notes,
                 url: window.location.href
             });

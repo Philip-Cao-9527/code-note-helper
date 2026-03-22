@@ -1,6 +1,6 @@
 /**
  * TorchCode Prompt 生成入口
- * 版本：1.0.53
+ * 版本：1.0.8
  */
 
 (function () {

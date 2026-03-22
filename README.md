@@ -4,18 +4,21 @@
 
 **算法刷题笔记 · 深度学习复盘 · AI 对话时间轴**
 
-+ 一个专为算法刷题、深度学习和 AI 学习场景打造的浏览器扩展，让刷过的每一道题都成为真正的技术资产！
+一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
 
 
-![Version](https://img.shields.io/badge/version-1.0.70-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.8-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
 
-[功能亮点](#-功能亮点) · [快速开始](#-快速开始) · [使用指南](#-使用指南) · [同步与备份说明](#-同步与备份说明) · [API 配置](#-api-配置) · [English](#-english)
+[功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
 </div>
 
 ---
 
-## 💡 这些场景你一定经历过
+<a id="guide" name="guide"></a>
+## 📖 使用指南
+
+### 💡 这些场景你一定经历过
 
 **刷力扣的时候：**
 - 做完一道题想让 AI 帮忙讲讲思路，却要先复制题目，再复制代码，最后还要把参考题解也贴过去，来回折腾好几分钟才能开始提问。
@@ -31,15 +34,24 @@
 - 一个题单三十多道题都在同一个对话里问，想找之前某道题的回答只能不停地滚轮翻页。
 - 想要回顾之前的关键回答？滚动到手酸也不一定找得到。
 
+![功能演示](./assets/readme-gallery/demo.gif)
+
 **CodeNote Helper 就是为了终结这些低效与内耗而生 ✨ 无论是算法刷题、深度学习实战，还是与 AI 的超长对话，它都能为你自动打通上下文：
 一键生成结构化笔记、智能深挖代码考点，并构建清晰的对话时间轴导航。把脏活累活交给插件，把时间留给真正的思考！**
 
 ---
 
+<a id="features" name="features"></a>
 ## ✨ 功能亮点
 
 ### 📝 算法刷题笔记助手
 > 在 LeetCode / CodeFun2000 题目页面自动启用
+
+![算法刷题笔记助手界面](./assets/readme-gallery/leetcode_cat.png)
+
+![算法刷题笔记助手界面](./assets/readme-gallery/leetcode-ui-modals.png)
+
+![题目与题单管理界面](./assets/readme-gallery/popup-note.png)
 
 - **一键生成结构化笔记**：自动抓取题目描述、你写的代码、参考题解，交给 AI 生成包含思路分析、逐行代码讲解、复杂度分析的完整 Markdown 笔记。
 - **真正有用的代码评价**：不再是敷衍的夸奖，而是针对你的代码实现逐段分析优缺点，给出具体的评分和改进方向。
@@ -53,6 +65,8 @@
 ### 🧠 深度学习笔记助手
 > 在 Deep-ML / TorchCode 页面自动启用
 
+![深度学习笔记助手界面](./assets/readme-gallery/torchcode.png)
+
 - **面向 Notebook 的复盘笔记**：自动读取当前题目、你的实现代码和内置参考实现，**生成结构化的深度学习笔记**。
 - **题型智能分流**：自动识别 Attention、Normalization、Training Loop 等题型，生成对应的**面试深挖考点**。
 - **无缝兼容**：完美支持 `deep-ml.com` 题目页和 TorchCode Hugging Face Space 工作区，数据与算法笔记统一管理。
@@ -61,6 +75,8 @@
 ### ⏱️ AI 对话时间轴
 > 在 ChatGPT / Gemini / Claude 页面自动启用
 
+![AI 对话时间轴界面](./assets/readme-gallery/AI-timeline.png)
+
 - **可视化时间轴**：在对话页面右侧生成时间轴导航条，整段对话的结构一目了然。
 - **点击跳转**：点击任意节点直接滚动到对应的消息位置，告别无尽翻页。
 - **星标收藏**：长按节点标记为 ⭐️，把重要的回答钉在时间轴上，随时回看。
@@ -68,6 +84,7 @@
 
 ---
 
+<a id="quick-start" name="quick-start"></a>
 ## 🚀 快速开始
 
 ### 方式一：应用商店一键安装（推荐）
@@ -150,7 +167,8 @@
 | [Claude](https://www.anthropic.com/claude) | AI 对话时间轴 |
 
 
-## ☁️ 同步与备份说明 (必看)
+<a id="sync-backup" name="sync-backup"></a>
+## ☁️ 同步与备份说明
 
 所有数据默认保存在浏览器本地，不联网也能正常使用。如果需要在多设备间同步，我们在**扩展设置页**（点击插件图标打开 Popup → 设置与同步）提供了以下选项：
 
@@ -169,6 +187,7 @@
 
 ---
 
+<a id="api-config" name="api-config"></a>
 ## ⚙️ API 配置
 
 如果你想在页面内直接生成笔记（直连 API 模式），需要在设置页填写 API 信息。扩展支持所有兼容 OpenAI 接口格式的 API（如 DeepSeek、Moonshot、各类中转站等）。
@@ -212,14 +231,20 @@
 - [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) - 参考了该项目的部分数据同步设计，也可以搭配该项目使用，同步复习力扣
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Philip-Cao-9527/code-note-helper&type=Date)](https://www.star-history.com/#Philip-Cao-9527/code-note-helper&Date)
+
+---
+
 ## 📜 License
 
 [MIT License](./LICENSE) © 2026 cao
 
 ---
 
-<a name="-english"></a>
 
+<a id="english" name="english"></a>
 ## 🇬🇧 English
 
 **CodeNote Helper** is a Chrome/Edge extension that takes the repetitive busywork out of studying algorithms and deep learning. No more copy-pasting problems, code, and solutions back and forth just to ask AI a question.

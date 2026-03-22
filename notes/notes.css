@@ -1,6 +1,6 @@
 /**
  * 笔记网页样式
- * 版本：1.0.69
+ * 版本：1.0.8
  */
 
 :root {
@@ -328,6 +328,8 @@ select {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(252, 248, 240, 0.82));
   font-family: "Source Serif 4", "Noto Serif SC", "Songti SC", serif;
+  font-feature-settings: "liga" 0, "calt" 0;
+  font-variant-ligatures: none;
 }
 
 .note-preview > :first-child {
@@ -359,6 +361,15 @@ select {
 
 .note-preview h3 {
   font-size: 1.32em;
+}
+
+.note-preview h4 {
+  font-size: 1.16em;
+}
+
+.note-preview h5,
+.note-preview h6 {
+  font-size: 1.08em;
 }
 
 .note-preview p {

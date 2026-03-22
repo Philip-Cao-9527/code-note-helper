@@ -32,7 +32,7 @@
             `题目：${fullTitle}`,
             `题号：${item.frontendQuestionId || '暂无'}`,
             `难度：${item.difficulty || '未知'}`,
-            `进度：${item.progressLabel || '未记录'}`,
+            `进度：${item.progressLabel || '未匹配'}`,
             `最近更新：${stateUtils.formatDateTime(item.matchedRecord && item.matchedRecord.updatedAt)}`
         ].join('\n');
     }
@@ -147,7 +147,7 @@
         }).filter(Boolean).join('');
 
         elements.problemLists.innerHTML = cards || `
-          <div class="empty-state">${hasFilter ? '没有找到符合当前筛选条件的题单题目。' : '没有找到符合检索条件的题单题目。'}</div>
+          <div class="empty-state">${hasFilter ? '没有找到符合当前筛选条件的题单题目。提示：未匹配表示题单题目尚未在本地记录中命中。' : '没有找到符合检索条件的题单题目。'}</div>
         `;
     }
 

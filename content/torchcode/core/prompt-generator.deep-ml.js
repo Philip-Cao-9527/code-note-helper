@@ -1,6 +1,6 @@
 /**
  * TorchCode Prompt 生成器（Deep-ML）
- * 版本：1.0.54
+ * 版本：1.0.8
  */
 
 (function () {
@@ -22,10 +22,83 @@
         ]);
     }
 
+    function resolvePrimaryLink(data) {
+        const links = data && data.links ? data.links : {};
+        const first = Object.values(links).find((value) => String(value || '').trim());
+        return String(first || data.sourceUrl || '').trim();
+    }
+
+    function generateDeepMlQaPrompt(data, shared) {
+        const headingLevel = data.headingLevel || '##';
+        const levelNum = shared.headingLevelToNumber(headingLevel);
+        const h1 = '#'.repeat(levelNum);
+        const h2 = '#'.repeat(levelNum + 1);
+        const userLevel = data.userLevel || '小白';
+        const levelGuide = shared.USER_LEVEL_GUIDE[userLevel] || shared.USER_LEVEL_GUIDE['小白'];
+        const taskTitle = shared.sanitizeDeepMlText(data.taskTitle) || 'Deep-ML 练习';
+        const noteTitle = data.noteTitle || taskTitle;
+        const link = resolvePrimaryLink(data);
+        const description = shared.sanitizeDeepMlText(data.description || data.summary) || '未提供';
+        const currentCode = shared.sanitizeDeepMlText(data.currentCode || data.starterCode) || '未提供';
+
+        return `## 任务说明
+我是 Deep-ML【${userLevel}】，当前使用“仅答疑”模式。请你直接回答问题，不要输出完整笔记大纲。讲解风格请根据我的水平进行调整（${levelGuide.style}）。
+
+## 输出格式要求（仅答疑模式）
+请严格按照以下结构输出（标题级别从 ${h1} 开始）：
+
+${h1} ${noteTitle}
+${h2} 题目信息
+- 题目名称：${taskTitle}
+- 题目链接：${link ? `[点击跳转](${link})` : '未提供'}
+
+${h2} 题目内容最简复述
+[仅保留关键约束与核心目标，不要展开完整笔记章节]
+
+${h2} 当前用户题解
+\`\`\`python
+${shared.escapeFence(currentCode)}
+\`\`\`
+
+${h2} 用户疑问与体会原文
+${shared.buildQaOnlyUserNotesBlock(data.notes)}
+
+${h2} 逐条答疑（必须详细）
+1. [结论] + [原因] + [具体步骤] + [边界/反例] + [常见误区]
+2. [继续逐条回答，每条都要落到用户原文对应的问题点]
+[每条答疑不少于 180 字；若用户原文有 N 个疑问，至少输出 N 条答疑，不得合并]
+[“逐条答疑”总字数不少于 520 字；若用户原文为空，也要输出不少于 320 字的问题拆解与建议]
+
+${h2} 必要代码（仅在问题需要代码时输出）
+[只有在答疑必须依赖代码时，才输出完整可运行代码块；若不需要代码，请明确写“本题当前疑问无需新增代码”。]
+
+## 原始输入（输入项保持原样）
+- 练习标题：${taskTitle}
+- 难度：${shared.sanitizeDeepMlText(data.difficulty) || '未标注'}
+- 签名：${shared.sanitizeDeepMlText(data.signature) || '未提供'}
+- 题目描述：${description}
+- 规则与限制：${shared.sanitizeDeepMlText(data.rules) || '未提供'}
+- 示例：${shared.sanitizeDeepMlText(data.example) || '未提供'}
+- 当前来源：${data.sourceLabel || 'Deep-ML 题库'}
+- 当前页面：${data.sourceUrl || ''}
+
+## 强制要求
+1. 只输出一个题目名称与一个题目链接。
+2. 若“我的疑问/体会”非空，必须逐字原样输出原文（包含标点、顺序、换行），否则视为失败并重写。
+3. 答疑必须逐条对应用户问题，禁止只写概述；每条都必须包含“结论、原因、步骤、边界/反例、常见误区”。
+4. 仅在必要时输出完整代码块，不需要代码时不要硬塞代码。
+5. “逐条答疑”总字数必须达标：非空疑问不少于 520 字；空疑问不少于 320 字。
+6. 直接输出 Markdown 正文，不要输出“好的/当然可以/下面开始”等套话。`;
+    }
+
     function generateDeepMlPrompt(data) {
         const shared = getSharedModule();
         if (!shared) {
             return 'TorchCode Prompt 共享模块未加载，请刷新页面后重试。';
+        }
+
+        if (String(data.noteMode || '').trim() === 'qa_only') {
+            return generateDeepMlQaPrompt(data, shared);
         }
 
         const headingLevel = data.headingLevel || '##';

@@ -130,7 +130,6 @@
                 };
                 const items = Array.isArray(list.items) ? list.items.map((item) => {
                     const matchedRecord = canonicalMap.get(item.canonicalId) || null;
-                    const stage = records.getRecordStage(matchedRecord);
                     let progressState = 'pending';
                     // 题单完成口径：只要该题触发过任意插件行为即视为已完成。
                     if (matchedRecord) {
@@ -143,7 +142,7 @@
                     return {
                         ...item,
                         progressState,
-                        progressLabel: progressState === 'completed' ? '已完成' : stage.label,
+                        progressLabel: progressState === 'completed' ? '已完成' : '未匹配',
                         matchedRecord
                     };
                 }) : [];

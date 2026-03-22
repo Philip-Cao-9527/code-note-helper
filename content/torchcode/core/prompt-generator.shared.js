@@ -1,6 +1,6 @@
 /**
  * TorchCode Prompt 共享模块
- * 版本：1.0.54
+ * 版本：1.0.8
  */
 
 (function () {
@@ -358,11 +358,22 @@
         return [
             '【我的疑问与体会】',
             `「${normalized}」 请针对以上用户的疑问与体会，进行**深度详细**的回应：`,
+            '0. **必须逐字原样复述上面的用户疑问原文**，禁止改写、删减、总结、同义替换。',
             '1. **直接回答用户的每一个具体问题**，不要泛泛而谈',
             '2. **如果用户要求代码，必须提供完整可运行的代码块**，禁止只用文字描述代替',
             '3. **展开论述每个思路的可行性、优劣势和适用场景**',
             '4. **结合本题的具体数据特征和约束条件**进行分析',
             '5. **过程要有条理、分点论述**，而不是一段很长的文字'
+        ].join('\n');
+    }
+
+    function buildQaOnlyUserNotesBlock(notes) {
+        const normalized = String(notes || '').trim();
+        const literal = normalized || '无';
+        return [
+            '【用户疑问与体会原文】',
+            `「${literal}」`,
+            '【强制要求】若原文非空，必须逐字保留以上原文（标点、顺序、换行都不能改），否则视为失败。'
         ].join('\n');
     }
 
@@ -382,6 +393,7 @@
         isLikelyBase64Text,
         sanitizeDeepMlText,
         buildCommonHardRules,
-        buildUserNotesResponseBlock
+        buildUserNotesResponseBlock,
+        buildQaOnlyUserNotesBlock
     };
 })();

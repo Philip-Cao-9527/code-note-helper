@@ -165,7 +165,7 @@
 
         <section class="card">
             <div class="card-title">API 配置</div>
-            <div class="card-note">用于配置大语言模型 API 参数，直接通过AI直接生成笔记。</div>
+            <div class="card-note">用于配置大语言模型 API 参数，直接通过AI直接生成笔记。修改后需点击“保存 API 配置”才会生效。</div>
 
             <div class="form-grid">
                 <div class="form-group full">
@@ -186,6 +186,9 @@
             <div class="actions-row" style="margin-top: 12px;">
                 <button class="btn btn-secondary" id="btn-reset-api">恢复默认</button>
                 <button class="btn btn-primary" id="btn-save-api">保存 API 配置</button>
+            </div>
+            <div class="sync-dirty-hint" id="api-dirty-hint" style="display: none; margin-top: 12px;">
+                API 配置已修改，请先点击“保存 API 配置”。未保存直接离开页面会持续弹出浏览器确认提醒。
             </div>
         </section>
     </div>

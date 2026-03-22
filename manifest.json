@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CodeNote Helper",
-  "version": "1.0.70",
+  "version": "1.0.8",
   "description": "LeetCode / TorchCode 笔记助手 + AI 对话时间轴 | Code study notes & AI timeline",
   "author": "cao",
   "icons": {

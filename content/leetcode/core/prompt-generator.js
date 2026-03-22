@@ -1,6 +1,6 @@
 /**
  * LeetCode prompt 生成器
- * 版本：1.0.42
+ * 版本：1.0.8
  */
 
 (function () {
@@ -240,10 +240,83 @@ ${content}`;
         }).join('\n\n');
     }
 
+    function buildQaOnlyLevelDesc(userLevel) {
+        const levelDescMap = {
+            '小白': '通俗易懂，多打比方，从零开始讲解',
+            '进阶选手': '逻辑清晰，稍微深入一点，重点在常见套路',
+            '熟练选手': '精炼准确，重点在优化思路和边界情况',
+            '专家': '专业深入，探讨底层原理和进阶优化细节'
+        };
+        return levelDescMap[userLevel] || levelDescMap['小白'];
+    }
+
+    function generateQaOnlyPrompt(data) {
+        const { noteTitle, problem, myCode, officialSolution, headingLevel, userLevel, notes, url } = data;
+        const levelMap = { "#": 1, "##": 2, "###": 3, "####": 4, "#####": 5 };
+        const levelNum = levelMap[headingLevel] || 3;
+        const h1 = '#'.repeat(levelNum);
+        const h2 = '#'.repeat(levelNum + 1);
+        const normalizedNotes = String(notes || '').trim();
+        const notesLiteral = normalizedNotes || '无';
+        const levelDesc = buildQaOnlyLevelDesc(userLevel);
+
+        return `## 任务说明
+我是 LeetCode【${userLevel}】，当前使用“仅答疑”模式。请直接进入答疑，不要输出完整笔记大纲，也不要写冗长前置说明。讲解风格请根据我的水平进行调整（${levelDesc}）。
+
+## 输出格式要求（仅答疑模式）
+请严格按照以下结构输出（标题级别从 ${h1} 开始）：
+
+${h1} ${noteTitle || '[题目名称]'}
+${h2} 题目信息
+- 题目名称：${noteTitle || '[题目名称]'}
+- 题目链接：[点击跳转查看题目](${url})
+
+${h2} 题目内容最简复述
+[仅保留关键约束与核心目标，3~6 句即可，不展开完整笔记章节]
+
+${h2} 当前用户题解
+\`\`\`python
+${myCode || '未提供'}
+\`\`\`
+
+${h2} 用户疑问与体会原文（必须逐字保留）
+「${notesLiteral}」
+
+${h2} 逐条答疑（必须详细）
+1. [结论] + [原因] + [具体步骤] + [边界/反例] + [常见误区]
+2. [继续逐条回答，每条都要落到用户原文对应的问题点]
+[按用户疑问条数继续，不要泛泛而谈，也不要把多个疑问合并成一条]
+[每条答疑不少于 180 字；若用户原文有 N 个疑问，至少输出 N 条答疑]
+[“逐条答疑”总字数不少于 520 字；若用户原文为空，也要输出不少于 320 字的问题拆解与建议]
+
+${h2} 必要代码（仅在问题需要代码时输出）
+[只有在答疑必须依赖代码时，才输出完整可运行代码块；若不需要代码，请明确写“本题当前疑问无需新增代码”。]
+
+## 原始输入内容（输入项保持原样）
+- 笔记标题：${noteTitle || '未提供'}
+- 题目内容：${problem || '未提供'}
+- 我的代码：${myCode || '未提供'}
+- 参考答案：${officialSolution || '未提供'}
+- 我的疑问/体会：${notesLiteral}
+- 题目链接：${url}
+
+## 强制要求
+1. 只输出一个题目名称与一个题目链接，不要扩展多题结构。
+2. 若“我的疑问/体会”非空，必须逐字原样输出原文（标点、顺序、换行都不能改），否则视为失败并重写。
+3. 答疑必须逐条对应用户问题，禁止只写概述；每条都必须包含“结论、原因、步骤、边界/反例、常见误区”。
+4. 只有当问题需要代码时才输出完整代码块；不需要代码时禁止硬塞代码。
+5. “逐条答疑”总字数必须达标：非空疑问不少于 520 字；空疑问不少于 320 字。
+6. 直接输出 Markdown 正文，不要输出“好的/当然可以/下面开始”等套话。`;
+    }
+
     // === 完整的 Prompt 生成（包含所有约束） ===
 
     function generatePrompt(data) {
-        const { noteTitle, problem, myCode, officialSolution, headingLevel, userLevel, notes, url } = data;
+        const { noteTitle, problem, myCode, officialSolution, headingLevel, userLevel, notes, url, noteMode } = data;
+
+        if (noteMode === 'qa_only') {
+            return generateQaOnlyPrompt(data);
+        }
 
         const levelMap = { "#": 1, "##": 2, "###": 3, "####": 4, "#####": 5 };
         const levelNum = levelMap[headingLevel] || 3;
@@ -614,6 +687,7 @@ ${officialSolution}
 ${notes}
 」
 
+**【强制要求】你必须逐字原样输出以上“我的疑问/体会”原文（包含标点、顺序与换行），禁止改写、删减、总结或同义替换。**
 **注意**：以上用户的疑问/体会已在上方指定位置（优化题解之后、总结之前）单独回应，请确保在正确位置输出该章节。
 `;
         } else {
@@ -657,7 +731,8 @@ ${notes}
    - 每个讲解必须为 180~320 字，且至少包含 3 个要点（核心思路、关键语句/数据结构作用、适用场景）
    - “核心思路”与“关键语句/数据结构作用”必须详细展开；“适用场景”可简洁描述，不要求解释未被推荐理由
    - 若缺失、错位、编号不一致或出现统一讲解，视为整份答案不合格并重写
-${hasLingShenSolution ? `11. **【强制要求】已检测到灵茶山艾府(灵神)题解，推荐方案必须来自 @endlesscheng（灵茶山艾府/灵神）。**` : ''}
+11. **【强制要求】若“我的疑问/体会”非空，必须逐字原样输出用户原文；未原文输出视为失败并重写。**
+${hasLingShenSolution ? `12. **【强制要求】已检测到灵茶山艾府(灵神)题解，推荐方案必须来自 @endlesscheng（灵茶山艾府/灵神）。**` : ''}
 
 ## 🚨🚨🚨 关于参考题解的【最高优先级】强制约束 🚨🚨🚨
 

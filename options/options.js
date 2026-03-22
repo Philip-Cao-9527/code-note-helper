@@ -1,6 +1,6 @@
 /**
  * 高级设置页脚本
- * 版本：1.0.70
+ * 版本：1.0.8
  */
 
 (function () {
@@ -104,7 +104,9 @@
 
         // 同步设置未保存状态追踪
         const syncDirtyHint = document.getElementById('sync-dirty-hint');
+        const apiDirtyHint = document.getElementById('api-dirty-hint');
         let syncDirty = false;
+        let apiDirty = false;
 
         function markSyncDirty() {
             if (syncDirty) return;
@@ -121,9 +123,24 @@
             }
         }
 
-        // 离开页面前如果有未保存的同步设置变更，弹出确认
+        function markApiDirty() {
+            if (apiDirty) return;
+            apiDirty = true;
+            if (apiDirtyHint) {
+                apiDirtyHint.style.display = '';
+            }
+        }
+
+        function clearApiDirty() {
+            apiDirty = false;
+            if (apiDirtyHint) {
+                apiDirtyHint.style.display = 'none';
+            }
+        }
+
+        // 离开页面前如果有未保存配置变更，弹出确认
         window.addEventListener('beforeunload', (event) => {
-            if (!syncDirty) return;
+            if (!syncDirty && !apiDirty) return;
             event.preventDefault();
             event.returnValue = '';
         });
@@ -211,6 +228,7 @@
             elements.apiUrl.value = result.api_url || 'https://api.openai.com/v1';
             elements.apiKey.value = result.api_key || '';
             elements.apiModel.value = result.api_model || 'gpt-4o';
+            clearApiDirty();
         }
 
         async function loadSyncSection() {
@@ -497,6 +515,7 @@
                     api_key: elements.apiKey.value.trim(),
                     api_model: elements.apiModel.value.trim() || 'gpt-4o'
                 });
+                clearApiDirty();
                 showToast('API 配置已保存');
             } catch (error) {
                 console.error('[Options] 保存 API 配置失败：', error);
@@ -508,7 +527,15 @@
             elements.apiUrl.value = 'https://api.openai.com/v1';
             elements.apiKey.value = '';
             elements.apiModel.value = 'gpt-4o';
-            showToast('已恢复默认 API 配置');
+            markApiDirty();
+            showToast('已恢复默认 API 配置，请点击“保存 API 配置”后生效');
+        });
+
+        [elements.apiUrl, elements.apiKey, elements.apiModel].forEach((input) => {
+            if (!input) return;
+            input.addEventListener('input', () => {
+                markApiDirty();
+            });
         });
 
         try {

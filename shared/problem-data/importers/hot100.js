@@ -11,6 +11,10 @@
     const helpers = modules.helpers || {};
 
     const HOT100_CONFIG = constants.HOT100_CONFIG || {};
+    const STUDY_PLAN_SUPPORTED_HOSTS = new Set([
+        'leetcode.cn',
+        'leetcode.com'
+    ]);
     const STUDY_PLAN_CONFIGS = {
         'top-100-liked': {
             listId: HOT100_CONFIG.listId || 'lc-cn:studyplan:top-100-liked',
@@ -61,12 +65,19 @@
         return discussConfig ? discussConfig.id : '';
     }
 
-    function buildStudyPlanQuestionUrl(slug, planConfig) {
-        return `https://leetcode.cn/problems/${slug}/description/?envType=${planConfig.envType}&envId=${planConfig.envId}`;
+    function resolveLeetCodeOrigin(hostname) {
+        return helpers.normalizeHost(hostname) === 'leetcode.com'
+            ? 'https://leetcode.com'
+            : 'https://leetcode.cn';
     }
 
-    function buildProblemBaseUrl(slug) {
-        return `https://leetcode.cn/problems/${slug}/`;
+    function buildStudyPlanQuestionUrl(slug, planConfig) {
+        const origin = planConfig.problemOrigin || 'https://leetcode.cn';
+        return `${origin}/problems/${slug}/description/?envType=${planConfig.envType}&envId=${planConfig.envId}`;
+    }
+
+    function buildProblemBaseUrl(slug, origin = 'https://leetcode.cn') {
+        return `${origin}/problems/${slug}/`;
     }
 
     function parseNextData(html, sourceLabel) {
@@ -192,21 +203,32 @@
     function parseImportTarget(url) {
         try {
             const urlObject = new URL(String(url || '').trim());
-            if (helpers.normalizeHost(urlObject.hostname) !== 'leetcode.cn') {
-                return null;
-            }
+            const normalizedHost = helpers.normalizeHost(urlObject.hostname);
 
             const pathname = normalizePath(urlObject.pathname);
             const studyPlanMatch = pathname.match(/^\/studyplan\/([^/]+)$/);
             if (studyPlanMatch) {
+                if (!STUDY_PLAN_SUPPORTED_HOSTS.has(normalizedHost)) {
+                    return null;
+                }
                 const planSlug = String(studyPlanMatch[1] || '').toLowerCase();
                 const planConfig = STUDY_PLAN_CONFIGS[planSlug];
                 if (!planConfig) return null;
+                const origin = resolveLeetCodeOrigin(normalizedHost);
                 return {
                     type: 'studyplan',
-                    sourceUrl: planConfig.sourceUrl,
-                    planConfig
+                    sourceUrl: `${origin}/studyplan/${planConfig.planSlug}/`,
+                    planConfig: {
+                        ...planConfig,
+                        sourceUrl: `${origin}/studyplan/${planConfig.planSlug}/`,
+                        problemOrigin: origin,
+                        site: normalizedHost
+                    }
                 };
+            }
+
+            if (normalizedHost !== 'leetcode.cn') {
+                return null;
             }
 
             const discussMatch = pathname.match(/^\/circle\/discuss\/([^/]+)$/i);
@@ -281,7 +303,7 @@
                     translatedTitle: question.translatedTitle || question.title || titleSlug,
                     difficulty: question.difficulty || 'UNKNOWN',
                     url: buildStudyPlanQuestionUrl(titleSlug, planConfig),
-                    baseUrl: buildProblemBaseUrl(titleSlug),
+                    baseUrl: buildProblemBaseUrl(titleSlug, planConfig.problemOrigin),
                     order,
                     sourceContext: {
                         envType: planConfig.envType,
@@ -311,7 +333,7 @@
             sourceType: planConfig.sourceType,
             sourceUrl: planConfig.sourceUrl,
             title: detail?.name || planConfig.title,
-            site: 'leetcode.cn',
+            site: planConfig.site || 'leetcode.cn',
             importedAt: now,
             updatedAt: now,
             items: buildStudyPlanItems(detail, planConfig)

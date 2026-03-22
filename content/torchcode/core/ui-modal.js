@@ -1,6 +1,6 @@
 /**
  * TorchCode UI 模块
- * 版本：1.0.52
+ * 版本：1.0.8
  */
 
 (function () {
@@ -151,10 +151,10 @@
 
     async function trackCurrentAction(actionType, extra = {}) {
         const store = getProblemDataStore();
-        if (!store || typeof store.trackProblemAction !== 'function' || !currentContext) return;
+        if (!store || typeof store.trackProblemAction !== 'function' || !currentContext) return null;
 
         try {
-            await store.trackProblemAction({
+            return await store.trackProblemAction({
                 url: window.location.href,
                 title: currentContext.taskTitle,
                 actionType,
@@ -162,6 +162,7 @@
             });
         } catch (error) {
             console.warn('[TorchCode] 记录动作失败：', error);
+            return null;
         }
     }
 
@@ -822,7 +823,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="tc-ai-platform">生成后操作</label>
+                        <label for="tc-ai-platform">生成prompt后操作</label>
                         <select id="tc-ai-platform">
                             <option value="copy_only">仅复制</option>
                             <option value="direct_api">⭐ 直接调用 API</option>
@@ -832,6 +833,21 @@
                             <option value="gemini">跳转 Gemini</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="tc-note-mode">笔记模式</label>
+                    <select id="tc-note-mode">
+                        <option value="full_note">生成完整笔记</option>
+                        <option value="qa_only">仅答疑</option>
+                    </select>
+                    <div style="font-size:12px;color:#666;margin-top:4px">💡 仅答疑会精简输出结构，优先快速回应你的问题</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="tc-manual-add-btn">添加题目</label>
+                    <button class="btn btn-secondary" id="tc-manual-add-btn" type="button" style="width:100%;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;box-shadow:0 1px 2px rgba(15,23,42,0.04)">➕ 添加题目</button>
+                    <div style="font-size:12px;color:#666;margin-top:4px">将当前题目快速加入插件记录，无需先执行生成操作</div>
                 </div>
 
                 <div id="tc-api-settings" class="api-settings">
@@ -945,6 +961,7 @@
         const referenceElement = document.getElementById('tc-reference-answer');
         const notesElement = document.getElementById('tc-notes');
         const userLevelElement = document.getElementById('tc-user-level');
+        const noteModeElement = document.getElementById('tc-note-mode');
 
         if (taskTitleElement) {
             taskTitleElement.textContent = context.taskTitle || '未识别练习';
@@ -971,6 +988,10 @@
 
         if (userLevelElement) {
             userLevelElement.value = '小白';
+        }
+
+        if (noteModeElement) {
+            noteModeElement.value = 'full_note';
         }
 
         fillReferenceAnswer(context);
@@ -1153,6 +1174,7 @@
         const noteTitle = document.getElementById('tc-note-title').value.trim();
         const headingLevel = document.getElementById('tc-heading-level').value;
         const userLevel = document.getElementById('tc-user-level').value;
+        const noteMode = document.getElementById('tc-note-mode').value;
         const aiPlatform = document.getElementById('tc-ai-platform').value;
         const referenceAnswer = document.getElementById('tc-reference-answer').value.trim();
         const notes = document.getElementById('tc-notes').value.trim();
@@ -1181,6 +1203,7 @@
             noteTitle,
             headingLevel,
             userLevel,
+            noteMode,
             referenceCode: referenceAnswer || currentContext.referenceCode || '',
             notes
         });
@@ -1332,6 +1355,19 @@
         }
     }
 
+    async function handleManualAdd() {
+        if (!currentContext) {
+            showToast('当前还没有读取到页面内容');
+            return;
+        }
+        const actionResult = await trackCurrentAction('manual_added');
+        if (actionResult) {
+            showToast('✅ 当前题目已加入记录', 2600);
+        } else {
+            showToast('⚠️ 当前页面暂不支持添加题目记录', 2800);
+        }
+    }
+
     function createModal() {
         modal = document.createElement('div');
         modal.id = 'torchcode-note-helper-modal';
@@ -1346,6 +1382,7 @@
         document.getElementById('tc-generate-btn').addEventListener('click', handleGenerate);
         document.getElementById('tc-copy-result').addEventListener('click', handleCopyResult);
         document.getElementById('tc-save-result').addEventListener('click', handleSaveResult);
+        document.getElementById('tc-manual-add-btn').addEventListener('click', handleManualAdd);
         document.getElementById('tc-ai-platform').addEventListener('change', () => {
             updateApiSettingsVisibility();
         });

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * AI 对话时间轴 内容脚本 - c.aimonkey.plus
- * 版本：1.0.32
+ * 版本：1.0.8
  * 基线：current（v1.0.31）行为
  */
 
@@ -11,7 +11,7 @@
     if (window.__AI_TIMELINE_INJECTED__) return;
     window.__AI_TIMELINE_INJECTED__ = true;
 
-    console.log('[AI Timeline] Content script loaded (v1.0.32)');
+    console.log('[AI Timeline] Content script loaded (v1.0.8)');
 
     // === 配置 ===
     const CONFIG = {
@@ -22,7 +22,7 @@
         INIT_DELAY: 1000,
         SCROLL_BEHAVIOR: 'smooth',
         STORAGE_PREFIX: 'ai_timeline_marks_',
-        PREVIEW_TEXT_LENGTH: 150,
+        PREVIEW_TEXT_LENGTH: 260,
         LONG_CONVERSATION_THRESHOLD: 8,
         TRACK_PADDING: 16,
         MIN_GAP: 24,
@@ -1005,5 +1005,6 @@
     }
 
 })();
+
 
 

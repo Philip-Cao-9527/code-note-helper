@@ -1,6 +1,6 @@
 /**
  * 刷题记录共享常量
- * 版本：1.0.64
+ * 版本：1.0.8
  */
 
 (function () {
@@ -41,7 +41,9 @@
             prompt_copied: '已生成提示词',
             note_generated: '已生成笔记',
             result_copied: '已复制结果',
-            note_saved: '已保存笔记'
+            note_saved: '已保存笔记',
+            manual_added: '已手动添加题目',
+            submission_passed: '提交通过自动入库'
         },
         STAGE_PRIORITY: {
             none: 0,

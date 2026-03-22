@@ -1,5 +1,5 @@
 /* CodeNote Helper 样式 */
-/* 版本：1.0.65 */
+/* 版本：1.0.8 */
 
 /* 悬浮按钮 */
 #note-helper-btn {
@@ -244,6 +244,8 @@
   border: 1px solid #e2e8f0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 6px 20px rgba(15, 23, 42, 0.08);
   font-family: "SF Pro Text", "Segoe UI", "PingFang SC", system-ui, -apple-system, sans-serif;
+  font-feature-settings: "liga" 0, "calt" 0;
+  font-variant-ligatures: none;
   line-height: 1.65;
   overflow: auto;
 }
@@ -271,6 +273,13 @@
 #api-output-render h4 {
   font-weight: 700;
   margin: 18px 0 10px;
+}
+
+#api-output-render h5,
+#api-output-render h6 {
+  font-weight: 700;
+  margin: 16px 0 10px;
+  font-size: 1em;
 }
 
 #api-output-render pre {

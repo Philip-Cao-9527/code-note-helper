@@ -418,7 +418,8 @@ input {
   border-color: rgba(245, 158, 11, 0.24);
 }
 
-.status-badge.pending {
+.status-badge.pending,
+.status-badge.none {
   color: var(--text-muted);
   background: rgba(148, 163, 184, 0.12);
   border-color: rgba(148, 163, 184, 0.22);

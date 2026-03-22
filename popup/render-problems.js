@@ -12,10 +12,11 @@
     function buildProblemTooltip(store, record) {
         const fullTitle = record.title || record.problemKey || '未命名题目';
         const stage = store.getRecordStage(record);
+        const stageLabel = stage && stage.code === 'none' ? '仅入库' : stage.label;
         return [
             `题目：${fullTitle}`,
             `站点：${record.site || '未知'}`,
-            `状态：${stage.label}`,
+            `状态：${stageLabel}`,
             `最近动作：${store.getActionLabel(record.lastActionType)}`,
             `最近更新：${stateUtils.formatDateTime(record.updatedAt)}`
         ].join('\n');
@@ -36,7 +37,7 @@
             const hasFilter = Boolean(keyword) || statusFilter !== 'all';
             elements.problemsList.innerHTML = `
               <div class="empty-state">
-                ${hasFilter ? '没有找到符合当前筛选条件的题目。' : '这里会显示你保存过笔记或用插件处理过的题目。'}
+                ${hasFilter ? '没有找到符合当前筛选条件的题目。提示：仅入库表示已有记录但尚未生成提示词/笔记。' : '这里会显示你保存过笔记或用插件处理过的题目。'}
               </div>
             `;
             elements.problemsPagination.innerHTML = '';

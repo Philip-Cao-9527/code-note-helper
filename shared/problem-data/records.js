@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录模块
- * 版本：1.0.65
+ * 版本：1.0.8
  */
 
 (function () {
@@ -181,6 +181,10 @@
             resultCopiedAt: null,
             noteSavedCount: 0,
             noteSavedAt: null,
+            manualAddedCount: 0,
+            manualAddedAt: null,
+            submissionPassedCount: 0,
+            submissionPassedAt: null,
             noteContent: ''
         };
     }
@@ -342,6 +346,10 @@
             resultCopiedAt: record.resultCopiedAt,
             noteSavedCount: record.noteSavedCount || 0,
             noteSavedAt: record.noteSavedAt,
+            manualAddedCount: record.manualAddedCount || 0,
+            manualAddedAt: record.manualAddedAt,
+            submissionPassedCount: record.submissionPassedCount || 0,
+            submissionPassedAt: record.submissionPassedAt,
             hasNoteContent: hasSavedNoteContent(record)
         };
     }
@@ -394,6 +402,12 @@
             nextRecord.noteSavedCount = Number(nextRecord.noteSavedCount || 0) + 1;
             nextRecord.noteSavedAt = now;
             nextRecord.noteContent = typeof noteContent === 'string' ? noteContent : (nextRecord.noteContent || '');
+        } else if (actionType === 'manual_added') {
+            nextRecord.manualAddedCount = Number(nextRecord.manualAddedCount || 0) + 1;
+            nextRecord.manualAddedAt = now;
+        } else if (actionType === 'submission_passed') {
+            nextRecord.submissionPassedCount = Number(nextRecord.submissionPassedCount || 0) + 1;
+            nextRecord.submissionPassedAt = now;
         }
 
         records[recordId] = nextRecord;

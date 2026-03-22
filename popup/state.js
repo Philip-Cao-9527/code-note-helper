@@ -125,13 +125,14 @@
         if (stageCode === 'saved') return '已保存';
         if (stageCode === 'generated') return '已生成';
         if (stageCode === 'prompt') return '已处理';
-        return '未记录';
+        if (stageCode === 'none') return '仅入库';
+        return '仅入库';
     }
 
     function getProgressBadge(progressState) {
         if (progressState === 'completed') return { code: 'completed', label: '已完成' };
         if (progressState === 'in_progress') return { code: 'in-progress', label: '进行中' };
-        return { code: 'pending', label: '未记录' };
+        return { code: 'pending', label: '未匹配' };
     }
 
     function buildProblemSearchText(record) {

@@ -1,4 +1,4 @@
-/* AI 对话时间轴 样式 - ChatGPT（版本：1.0.32） */
+﻿/* AI 对话时间轴 样式 - ChatGPT（版本：1.0.8） */
 
 :root {
     --tl-dot-color: #D1D5DB;
@@ -146,7 +146,7 @@ body[style*="background: rgb(32"],
 
 .ai-timeline-tooltip {
     position: fixed;
-    max-width: 320px;
+    max-width: 420px;
     min-width: 120px;
     background-color: var(--tl-tooltip-bg);
     color: var(--tl-tooltip-text);
@@ -268,3 +268,4 @@ body[style*="background: rgb(32"],
     background-color: var(--tl-dot-color);
     opacity: 0.5;
 }
+
