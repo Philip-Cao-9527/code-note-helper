@@ -1,6 +1,6 @@
 ﻿/**
  * AI 对话时间轴 内容脚本 - ChatGPT
- * 版本：1.0.8
+ * 版本：1.0.80
  * 基线：7ef0d64（v1.0.18）+ 深色模式增强
  */
 
@@ -11,7 +11,7 @@
     if (window.__AI_TIMELINE_INJECTED__) return;
     window.__AI_TIMELINE_INJECTED__ = true;
 
-    console.log('[AI Timeline] Content script loaded (v1.0.8)');
+    console.log('[AI Timeline] Content script loaded (v1.0.80)');
 
     // === 配置 ===
     const CONFIG = {
@@ -974,6 +974,7 @@
     }
 
 })();
+
 
 
 

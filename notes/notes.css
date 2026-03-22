@@ -1,6 +1,6 @@
-/**
+﻿/**
  * 笔记网页样式
- * 版本：1.0.8
+ * 版本：1.0.80
  */
 
 :root {
@@ -579,3 +579,4 @@ body.layout-editor-only .editor-body {
     scroll-behavior: auto !important;
   }
 }
+

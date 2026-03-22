@@ -1,6 +1,6 @@
-/**
+﻿/**
  * TorchCode Prompt 生成入口
- * 版本：1.0.8
+ * 版本：1.0.80
  */
 
 (function () {
@@ -47,3 +47,4 @@
         generatePrompt
     };
 })();
+

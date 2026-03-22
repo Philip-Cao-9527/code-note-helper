@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # CodeNote Helper
 
@@ -7,9 +7,9 @@
 一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
 
 
-![Version](https://img.shields.io/badge/version-1.0.8-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.80-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
 
-[功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
+[功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
 </div>
 
@@ -109,6 +109,7 @@
 
 ---
 
+<a id="permissions" name="permissions"></a>
 ## 🛡️ 权限说明（为什么需要这些权限？）
 
 在安装插件时，浏览器可能会提示你需要授予以下权限:
@@ -116,6 +117,12 @@
 * **修改您复制和粘贴的数据**
 
 这属于浏览器扩展的正常权限提示，不代表本扩展会在所有网站上读取你的数据。
+
+### 关于“继续操作有风险，请三思”提示（增强型安全浏览）
+
+如果你开启了 Chrome 的**增强型安全浏览（Enhanced protection）**，安装扩展时可能会先出现一层额外风险提示，例如“增强型安全浏览功能不信任此扩展程序”。  
+这层提示来自浏览器的增强保护机制，不是本扩展额外申请了新权限。通常会先看到该提示，再进入常规的“添加扩展程序/权限确认”弹窗。  
+对新上架或信任积累时间较短的开发者，这类提示更常见，并不等同于扩展本身存在恶意行为。
 
 ### 这些权限分别是做什么的？
 
@@ -270,3 +277,4 @@ All your notes and progress stay in your local browser by default. Optional feat
 
 ### License
 [MIT](./LICENSE) © 2026 cao
+

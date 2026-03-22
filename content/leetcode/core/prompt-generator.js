@@ -1,6 +1,6 @@
-/**
+﻿/**
  * LeetCode prompt 生成器
- * 版本：1.0.8
+ * 版本：1.0.80
  */
 
 (function () {
@@ -802,3 +802,4 @@ ${hasLingShenSolution ? `7. **【强制要求】灵神题解优先：**
         LANGUAGE_ALIASES
     };
 })();
+

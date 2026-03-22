@@ -1,6 +1,6 @@
-/**
+﻿/**
  * TorchCode Prompt 生成器（Deep-ML）
- * 版本：1.0.8
+ * 版本：1.0.80
  */
 
 (function () {
@@ -232,3 +232,4 @@ ${notesBlock}
         generateDeepMlPrompt
     };
 })();
+

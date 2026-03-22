@@ -1,6 +1,6 @@
 ﻿/**
  * AI 对话时间轴 内容脚本 - c.aimonkey.plus
- * 版本：1.0.8
+ * 版本：1.0.80
  * 基线：current（v1.0.31）行为
  */
 
@@ -11,7 +11,7 @@
     if (window.__AI_TIMELINE_INJECTED__) return;
     window.__AI_TIMELINE_INJECTED__ = true;
 
-    console.log('[AI Timeline] Content script loaded (v1.0.8)');
+    console.log('[AI Timeline] Content script loaded (v1.0.80)');
 
     // === 配置 ===
     const CONFIG = {
@@ -1005,6 +1005,7 @@
     }
 
 })();
+
 
 
 

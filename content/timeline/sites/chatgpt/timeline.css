@@ -1,4 +1,4 @@
-﻿/* AI 对话时间轴 样式 - ChatGPT（版本：1.0.8） */
+﻿/* AI 对话时间轴 样式 - ChatGPT（版本：1.0.80） */
 
 :root {
     --tl-dot-color: #D1D5DB;
@@ -268,4 +268,5 @@ body[style*="background: rgb(32"],
     background-color: var(--tl-dot-color);
     opacity: 0.5;
 }
+
 

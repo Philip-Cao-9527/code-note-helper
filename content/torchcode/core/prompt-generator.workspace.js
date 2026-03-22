@@ -1,6 +1,6 @@
-/**
+﻿/**
  * TorchCode Prompt 生成器（Workspace/HuggingFace）
- * 版本：1.0.8
+ * 版本：1.0.80
  */
 
 (function () {
@@ -217,3 +217,4 @@ ${notesBlock}
         generateWorkspacePrompt
     };
 })();
+

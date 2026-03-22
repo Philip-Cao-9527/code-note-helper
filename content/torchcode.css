@@ -1,6 +1,6 @@
-/**
+﻿/**
  * TorchCode 深度学习笔记助手样式
- * 版本：1.0.8
+ * 版本：1.0.80
  */
 
 :root {
@@ -1011,3 +1011,4 @@ body.tc-dragging * {
         flex-direction: column;
     }
 }
+
