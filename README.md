@@ -4,9 +4,7 @@
 
 **算法刷题笔记 · 深度学习复盘 · AI 对话时间轴**
 
-+ 一个专为算法刷题、深度学习和 AI 学习场景打造的浏览器扩展。
-+ 拒绝机械的复制粘贴，帮你自动化生成高质量复盘笔记
-+ 让刷过的每一道题都成为真正的技术资产！
++ 一个专为算法刷题、深度学习和 AI 学习场景打造的浏览器扩展，让刷过的每一道题都成为真正的技术资产！
 
 
 ![Version](https://img.shields.io/badge/version-1.0.70-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
