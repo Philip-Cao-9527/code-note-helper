@@ -171,7 +171,7 @@
 | [LeetCode 国际站](https://leetcode.com/) | 算法刷题笔记 |
 | [CodeFun2000](https://codefun2000.com/) | 算法刷题笔记 |
 | [Deep-ML](https://www.deep-ml.com/) | 深度学习笔记 |
-| [TorchCode Hugging Face Space](https://huggingface.co/spaces/duoan/TorchCode) | 深度学习笔记 |
+| [TorchCode Hugging Face Space](https://huggingface.co/spaces/duoan/TorchCode) | 深度学习笔记（[GitHub 仓库](https://github.com/duoan/TorchCode)） |
 | [ChatGPT](https://chatgpt.com/) | AI 对话时间轴 |
 | [Gemini](https://gemini.google.com/) | AI 对话时间轴 |
 | [Claude](https://www.anthropic.com/claude) | AI 对话时间轴 |
@@ -204,18 +204,18 @@
 
 ### 参考配置（以ChatAnyWhere 中转站为例）
 
+- ChatAnyWhere 开源仓库：https://github.com/chatanywhere/GPT_API_free
+
 | 配置项 | 值 |
 |--------|-----|
 | Base URL | `https://api.chatanywhere.tech/v1` |
-| Model | `deepseek-chat` 或其他支持的模型 |
+| Model | `deepseek-v3.2` 或其他支持的模型 |
 | API Key | 你的专属 Key（`sk-...`） |
 
 > **常见防坑指南**：
 > - **API 返回 404 / Invalid URL**：请确保 Base URL 以 `/v1` 结尾。
-+ ✅ 正确：`https://api.openai.com/v1`。
-+ ❌ 错误：`https://api.openai.com/v1/chat/completions`（插件会自动拼接后缀，请勿手动写全）。
-> - **TorchCode 页面没有按钮？**：
-+ 确认你已经进入了具体的 notebook 页面（代码编辑区），而不是停留在项目介绍页。
+>   - ✅ 正确：`https://api.openai.com/v1`。
+>   - ❌ 错误：`https://api.openai.com/v1/chat/completions`（插件会自动拼接后缀，请勿手动写全）。
 
 ---
 
