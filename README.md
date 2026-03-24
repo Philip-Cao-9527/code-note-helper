@@ -90,14 +90,14 @@
 <a id="quick-start" name="quick-start"></a>
 ## 🚀 快速开始
 
-### 方式一：应用商店一键安装（推荐）
+### 方式一：应用商店一键安装（推荐，可以自动更新）
 
 直接访问 Chrome 应用商店安装（**Edge 浏览器同样可以直接使用此链接安装**）：
 👉 **[点击前往 Chrome Web Store 下载安装](https://chromewebstore.google.com/detail/codenote-helper/kimmpnikdpgdecieafahiekobhcmckoa)**
 
-### 方式二：离线安装（开发者模式）
+### 方式二：离线安装（开发者模式，GitHub更新更快）
 
-如果你无法访问应用商店，可以通过 GitHub Releases 下载离线包：
+如果你无法访问应用商店或者是想要快速体验最新版，可以通过 GitHub Releases 下载离线包：
 
 1. 访问本项目的 **[Releases 页面](https://github.com/Philip-Cao-9527/code-note-helper/releases)**，下载最新版本的 `.zip` 压缩包并解压到一个固定的文件夹中。
 2. 打开浏览器的扩展管理页面：
