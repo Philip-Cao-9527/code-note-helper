@@ -1,6 +1,6 @@
 ﻿/**
  * TorchCode UI 模块
- * 版本：1.0.80
+ * 版本：1.0.81
  */
 
 (function () {
@@ -56,6 +56,11 @@
     let catCompanion = null;
     let uiVisible = true;
     let generationController = null;
+    let isGenerating = false;
+    let isPageScrollLocked = false;
+    let htmlOverflowBeforeGeneration = '';
+    let bodyOverflowBeforeGeneration = '';
+    let currentStreamStatus = null;
     let activeOpenRequestId = 0;
     const buttonRelativePositionCache = Object.create(null);
 
@@ -134,6 +139,162 @@
                 toast.classList.remove('show');
             }, duration);
         }
+    }
+
+    function setGeneratingState(generating) {
+        isGenerating = Boolean(generating);
+        const stopButton = document.getElementById('tc-stop-generate');
+        if (stopButton) {
+            stopButton.disabled = !isGenerating;
+        }
+    }
+
+    function syncStopGenerateButtonVisibility() {
+        const stopButton = document.getElementById('tc-stop-generate');
+        if (!stopButton) return;
+        stopButton.style.display = getCurrentAiPlatform() === 'direct_api' ? 'inline-flex' : 'none';
+    }
+
+    function lockPageScrollForGeneration() {
+        if (isPageScrollLocked) return;
+        isPageScrollLocked = true;
+        htmlOverflowBeforeGeneration = document.documentElement ? document.documentElement.style.overflow : '';
+        bodyOverflowBeforeGeneration = document.body ? document.body.style.overflow : '';
+        if (document.documentElement) {
+            document.documentElement.style.overflow = 'hidden';
+        }
+        if (document.body) {
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function unlockPageScrollForGeneration() {
+        if (!isPageScrollLocked) return;
+        if (document.documentElement) {
+            document.documentElement.style.overflow = htmlOverflowBeforeGeneration;
+        }
+        if (document.body) {
+            document.body.style.overflow = bodyOverflowBeforeGeneration;
+        }
+        htmlOverflowBeforeGeneration = '';
+        bodyOverflowBeforeGeneration = '';
+        isPageScrollLocked = false;
+    }
+
+    function scrollDialogToBottomAfterStop() {
+        const container = dialog || document.getElementById('tc-dialog');
+        if (!container) return;
+        const targetTop = container.scrollHeight;
+        if (typeof container.scrollTo === 'function') {
+            container.scrollTo({
+                top: targetTop,
+                behavior: 'smooth'
+            });
+        } else {
+            container.scrollTop = targetTop;
+        }
+    }
+
+    function setStreamStatus(text, options = {}) {
+        const statusElement = document.getElementById('tc-stream-status');
+        if (!statusElement) return;
+        const statusText = String(text || '').trim();
+        statusElement.textContent = statusText;
+        statusElement.style.display = statusText ? 'block' : 'none';
+        statusElement.classList.toggle('is-error', Boolean(options.isError));
+    }
+
+    function resetThinkingPanel() {
+        const details = document.getElementById('tc-thinking-details');
+        const content = document.getElementById('tc-thinking-content');
+        if (details) {
+            details.hidden = true;
+            details.open = false;
+        }
+        if (content) {
+            content.textContent = '';
+        }
+    }
+
+    function updateThinkingPanel(thinkingText) {
+        const text = String(thinkingText || '');
+        const details = document.getElementById('tc-thinking-details');
+        const content = document.getElementById('tc-thinking-content');
+        if (!details || !content) return;
+        if (!text.trim()) {
+            details.hidden = true;
+            content.textContent = '';
+            return;
+        }
+        details.hidden = false;
+        content.textContent = text;
+    }
+
+    function initStreamStatusState() {
+        currentStreamStatus = {
+            startedAt: Date.now(),
+            thoughtSeconds: 0,
+            firstVisibleTokenAt: 0,
+            hasVisibleToken: false
+        };
+        setStreamStatus('正在思考');
+        resetThinkingPanel();
+    }
+
+    function markFirstVisibleTokenIfNeeded(text) {
+        if (!currentStreamStatus || currentStreamStatus.hasVisibleToken) return;
+        const normalized = String(text || '').trim();
+        if (!normalized) return;
+        currentStreamStatus.firstVisibleTokenAt = Date.now();
+        currentStreamStatus.hasVisibleToken = true;
+        currentStreamStatus.thoughtSeconds = Math.max(1, Math.ceil((currentStreamStatus.firstVisibleTokenAt - currentStreamStatus.startedAt) / 1000));
+        setStreamStatus(`Thought for ${currentStreamStatus.thoughtSeconds} s`);
+    }
+
+    function getApiPermissionHelper() {
+        return window.NoteHelperApiDomainPermission || null;
+    }
+
+    async function ensureApiDomainPermissionForUrl(apiUrl) {
+        const helper = getApiPermissionHelper();
+        if (!helper || typeof helper.ensureApiDomainPermission !== 'function') {
+            return {
+                ok: false,
+                message: '权限模块未加载，请刷新后重试。'
+            };
+        }
+        return helper.ensureApiDomainPermission(apiUrl, {
+            requestIfMissing: true
+        });
+    }
+
+    async function shouldConfirmOverwriteBeforeSave(text) {
+        const store = getProblemDataStore();
+        if (!store || typeof store.getProblemRecordByUrl !== 'function') return true;
+        const helper = getApiPermissionHelper();
+
+        let overwriteConfirmEnabled = true;
+        if (helper && typeof helper.getOverwriteConfirmEnabled === 'function') {
+            overwriteConfirmEnabled = await helper.getOverwriteConfirmEnabled(true);
+        } else if (window.Storage && typeof window.Storage.get === 'function') {
+            overwriteConfirmEnabled = await window.Storage.get('note_helper_overwrite_confirm_enabled', true);
+        } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            const data = await chrome.storage.local.get(['note_helper_overwrite_confirm_enabled']);
+            overwriteConfirmEnabled = typeof data.note_helper_overwrite_confirm_enabled === 'boolean'
+                ? data.note_helper_overwrite_confirm_enabled
+                : true;
+        }
+
+        if (!overwriteConfirmEnabled) return true;
+
+        const existingRecord = await store.getProblemRecordByUrl(window.location.href);
+        const existingNote = String(existingRecord && existingRecord.noteContent || '').trim();
+        if (!existingNote || existingNote === String(text || '').trim()) {
+            return true;
+        }
+
+        const confirmed = window.confirm('将覆盖原有记录，是否继续');
+        return confirmed;
     }
 
     async function copyToClipboard(text) {
@@ -243,6 +404,8 @@
                 showHint,
                 onHint: () => showToast('已取消本次生成')
             });
+            setGeneratingState(false);
+            unlockPageScrollForGeneration();
             return;
         }
 
@@ -250,6 +413,8 @@
             showToast('已取消本次生成');
         }
         resetGenerateButtonState();
+        setGeneratingState(false);
+        unlockPageScrollForGeneration();
     }
 
     function clearReferenceAnswerState() {
@@ -879,7 +1044,15 @@
                 </div>
 
                 <div id="tc-result-container">
-                    <label style="font-weight:600;display:block;margin-bottom:8px">🤖 AI 生成结果</label>
+                    <div class="tc-result-header-inline">
+                        <label style="font-weight:600;display:block;margin-bottom:8px">🤖 AI 生成结果</label>
+                        <button class="btn btn-secondary" id="tc-stop-generate" type="button" style="display:none" disabled>停止生成</button>
+                    </div>
+                    <div id="tc-stream-status" class="tc-stream-status" style="display:none"></div>
+                    <details id="tc-thinking-details" class="tc-thinking-details" hidden>
+                        <summary>查看思考内容（实验性）</summary>
+                        <pre id="tc-thinking-content"></pre>
+                    </details>
                     <div id="tc-result-render"></div>
                     <textarea id="tc-result-raw" readonly style="display:none"></textarea>
                     <button class="btn btn-secondary" id="tc-copy-result" type="button" style="width:100%" disabled>复制结果</button>
@@ -908,6 +1081,9 @@
         await persistModalRect();
         modal.classList.remove('show');
         currentContext = null;
+        setGeneratingState(false);
+        setStreamStatus('');
+        resetThinkingPanel();
         clearReferenceAnswerState();
         const notesElement = document.getElementById('tc-notes');
         if (notesElement) {
@@ -942,7 +1118,16 @@
         const apiSettingsElement = document.getElementById('tc-api-settings');
         if (!platformElement || !apiSettingsElement) return;
         const show = platformElement.value === 'direct_api';
+        if (!show && isGenerating) {
+            cancelActiveGeneration({ showHint: false });
+        }
         apiSettingsElement.classList.toggle('show', show);
+        if (!show) {
+            setStreamStatus('');
+            resetThinkingPanel();
+            setGeneratingState(false);
+        }
+        syncStopGenerateButtonVisibility();
         const controller = getGenerationController();
         if (controller) {
             controller.syncButtonForPlatformChange();
@@ -1078,6 +1263,9 @@
         currentContext = null;
         setReferenceLoadingState();
         resetGenerateButtonState();
+        setGeneratingState(false);
+        setStreamStatus('');
+        resetThinkingPanel();
         showRenderedResult('', { forceShow: false, isError: false });
 
         try {
@@ -1124,6 +1312,9 @@
         let lastRendered = '';
         let lastFlushTime = Date.now();
         let flushTimer = null;
+        const onThinkingProgress = typeof options.onThinkingProgress === 'function'
+            ? options.onThinkingProgress
+            : null;
 
         const flush = (force = false) => {
             if (typeof onProgress !== 'function') return;
@@ -1154,7 +1345,8 @@
             latestPartial = String(partial || '');
             scheduleFlush();
         }, {
-            signal: externalSignal
+            signal: externalSignal,
+            onThinkingProgress
         });
 
         try {
@@ -1233,6 +1425,19 @@
 
         if (!apiUrl || !apiKey) {
             showToast('请先填写接口地址和密钥');
+            if (!apiUrl) {
+                const input = document.getElementById('tc-api-url');
+                if (input) input.focus();
+            } else {
+                const input = document.getElementById('tc-api-key');
+                if (input) input.focus();
+            }
+            return;
+        }
+
+        const permissionResult = await ensureApiDomainPermissionForUrl(apiUrl);
+        if (!permissionResult.ok) {
+            showToast(permissionResult.message || '未授予该 API 域名的网络访问权限，无法使用该接口。', 3600);
             return;
         }
 
@@ -1253,13 +1458,14 @@
             return;
         }
 
-        const generationState = generateCtrl.startGeneration({
-            loadingText: '生成中（0字）...'
-        });
+        const generationState = generateCtrl.startGeneration();
         const requestId = generationState.requestId;
         let finalState = 'reset';
+        setGeneratingState(true);
+        lockPageScrollForGeneration();
+        initStreamStatusState();
 
-        showRenderedResult('正在连接 AI...', {
+        showRenderedResult('', {
             forceShow: true,
             isError: false,
             renderMode: 'stream'
@@ -1269,18 +1475,24 @@
             const result = await callAIWithOptimizedStreaming(apiUrl, apiKey, apiModel, prompt, (partial) => {
                 if (!generateCtrl.isCurrentRequest(requestId)) return;
                 const partialText = String(partial || '');
+                generateCtrl.updateProgress(requestId, {
+                    charCount: partialText.length
+                });
+                markFirstVisibleTokenIfNeeded(partialText);
                 showRenderedResult(partialText, {
                     forceShow: true,
                     isError: false,
                     renderMode: 'stream'
                 });
-                generateCtrl.updateProgress(requestId, {
-                    charCount: partialText.length
-                });
             }, {
-                signal: generationState.signal
+                signal: generationState.signal,
+                onThinkingProgress: (thinkingText) => {
+                    if (!generateCtrl.isCurrentRequest(requestId)) return;
+                    updateThinkingPanel(thinkingText);
+                }
             });
             if (!generateCtrl.isCurrentRequest(requestId)) return;
+            markFirstVisibleTokenIfNeeded(result);
             showRenderedResult(result, {
                 forceShow: true,
                 isError: false,
@@ -1293,15 +1505,19 @@
         } catch (error) {
             if (!generateCtrl.isCurrentRequest(requestId)) return;
             if (isAbortError(error)) {
-                showRenderedResult('', {
-                    forceShow: false,
-                    isError: false,
-                    renderMode: 'plain'
-                });
-                finalState = 'reset';
+                setStreamStatus('已停止生成');
+                if (!currentStreamStatus || !currentStreamStatus.hasVisibleToken) {
+                    showRenderedResult('', {
+                        forceShow: false,
+                        isError: false,
+                        renderMode: 'plain'
+                    });
+                }
+                finalState = currentStreamStatus && currentStreamStatus.hasVisibleToken ? 'retry' : 'reset';
             } else {
                 const errorMessage = getReadableErrorMessage(error, '生成失败，请稍后重试。');
                 console.error('[TorchCode] 生成失败：', error);
+                setStreamStatus('生成失败', { isError: true });
                 showRenderedResult(`生成失败：${errorMessage}`, {
                     forceShow: true,
                     isError: true,
@@ -1315,6 +1531,9 @@
                 state: finalState,
                 retryText: '重新生成'
             });
+            setGeneratingState(false);
+            unlockPageScrollForGeneration();
+            currentStreamStatus = null;
         }
     }
 
@@ -1331,6 +1550,11 @@
         }
 
         try {
+            const allowOverwrite = await shouldConfirmOverwriteBeforeSave(lastAIResult);
+            if (!allowOverwrite) {
+                showToast('已取消保存');
+                return;
+            }
             await store.saveProblemNote({
                 url: window.location.href,
                 title: currentContext.taskTitle,
@@ -1383,6 +1607,23 @@
         document.getElementById('tc-copy-result').addEventListener('click', handleCopyResult);
         document.getElementById('tc-save-result').addEventListener('click', handleSaveResult);
         document.getElementById('tc-manual-add-btn').addEventListener('click', handleManualAdd);
+        const stopButton = document.getElementById('tc-stop-generate');
+        if (stopButton) {
+            stopButton.addEventListener('click', () => {
+                const hasVisibleToken = Boolean(currentStreamStatus && currentStreamStatus.hasVisibleToken);
+                cancelActiveGeneration({ showHint: true });
+                if (hasVisibleToken) {
+                    const generateButton = document.getElementById('tc-generate-btn');
+                    if (generateButton) {
+                        generateButton.textContent = '重新生成';
+                        generateButton.disabled = false;
+                        generateButton.classList.remove('btn-loading');
+                    }
+                }
+                setStreamStatus('已停止生成');
+                requestAnimationFrame(() => scrollDialogToBottomAfterStop());
+            });
+        }
         document.getElementById('tc-ai-platform').addEventListener('change', () => {
             updateApiSettingsVisibility();
         });
@@ -1467,4 +1708,5 @@
         setVisible: setUiVisible
     };
 })();
+
 

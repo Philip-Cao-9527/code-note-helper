@@ -1,6 +1,6 @@
-/**
+﻿/**
  * 后台 Service Worker
- * 版本：1.0.47
+ * 版本：1.0.81
  */
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -22,6 +22,10 @@ async function handleMessage(message, sender) {
     switch (type) {
         case 'FETCH_REQUEST':
             return handleFetchRequest(message);
+        case 'CHECK_API_DOMAIN_PERMISSION':
+            return handleCheckApiDomainPermission(message);
+        case 'REQUEST_API_DOMAIN_PERMISSION':
+            return handleRequestApiDomainPermission(message);
         case 'OPEN_TAB':
             return handleOpenTab(message);
         case 'GET_MONACO_CODE':
@@ -35,6 +39,33 @@ async function handleMessage(message, sender) {
         default:
             throw new Error(`未知消息类型：${type}`);
     }
+}
+
+function normalizeApiPermissionPattern(pattern) {
+    const value = String(pattern || '').trim();
+    if (!value) {
+        throw new Error('缺少 API 域名权限模式');
+    }
+    if (!value.startsWith('https://') || !value.endsWith('/*')) {
+        throw new Error('API 域名权限模式无效，仅支持 https://host/*');
+    }
+    return value;
+}
+
+async function handleCheckApiDomainPermission({ pattern }) {
+    const normalizedPattern = normalizeApiPermissionPattern(pattern);
+    const granted = await chrome.permissions.contains({
+        origins: [normalizedPattern]
+    });
+    return { granted };
+}
+
+async function handleRequestApiDomainPermission({ pattern }) {
+    const normalizedPattern = normalizeApiPermissionPattern(pattern);
+    const granted = await chrome.permissions.request({
+        origins: [normalizedPattern]
+    });
+    return { granted };
 }
 
 async function handleFetchRequest({ url, options = {} }) {
@@ -302,3 +333,4 @@ async function injectTimelineScript(tabId) {
 }
 
 console.log('[Service Worker] 已启动');
+

@@ -7,7 +7,7 @@
 一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
 
 
-![Version](https://img.shields.io/badge/version-1.0.80-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.81-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
 
 [功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
@@ -57,6 +57,7 @@
 ![题目与题单管理界面](./assets/readme-gallery/popup-note.png)
 
 - **一键生成结构化笔记**：自动抓取题目描述、你写的代码、参考题解，交给 AI 生成包含思路分析、逐行代码讲解、复杂度分析的完整 Markdown 笔记。
+- **仅答疑模式（AI Tutor）**：不必每次都生成整篇笔记。可直接进入“仅答疑”模式，围绕你的代码与疑问做定向讲解、问题定位与改进建议，适合日常高频练习和面试前快速查漏补缺。
 - **真正有用的代码评价**：不再是敷衍的夸奖，而是针对你的代码实现逐段分析优缺点，给出具体的评分和改进方向。
 - **高质量题解优先推荐**：自动识别灵茶山艾府等大佬的题解并置顶作为推荐方案，帮你直接学习最优解法。
 - **三种灵活的使用方式**：复制 Prompt 粘贴到任意 AI 对话、直连 API 在页面内直接生成、或一键跳转到 ChatGPT / Claude / Gemini / DeepSeek。
@@ -71,6 +72,7 @@
 ![深度学习笔记助手界面](./assets/readme-gallery/torchcode.png)
 
 - **面向 Notebook 的复盘笔记**：自动读取当前题目、你的实现代码和内置参考实现，**生成结构化的深度学习笔记**。
+- **AI Tutor 式定向答疑**：在深度学习题目中可直接使用仅答疑模式，聚焦你当前卡住的实现细节、张量维度与训练逻辑，避免被冗长模板信息干扰。
 - **题型智能分流**：自动识别 Attention、Normalization、Training Loop 等题型，生成对应的**面试深挖考点**。
 - **无缝兼容**：完美支持 `deep-ml.com` 题目页和 TorchCode Hugging Face Space 工作区，数据与算法笔记统一管理。
 
@@ -105,7 +107,7 @@
    - Edge: 地址栏输入 `edge://extensions/`
 3. 打开页面右上角的**开发者模式**开关。
 4. 点击**加载已解压的扩展程序**，选择你刚刚解压的文件夹。
-5. **开始使用 🎉** —— 工具栏会出现扩展图标，打开任意 LeetCode 题目页面即可看到右下角的 📝 按钮。
+5. **开始使用 🎉** —— 工具栏会出现扩展图标，打开任意题目页面即可看到右下角的 📝 按钮。
 
 ---
 
@@ -137,7 +139,16 @@
 
 这些权限只用于扩展的核心功能，不会用于无关站点。
 
-#### 2. 修改您复制和粘贴的数据
+#### 2. API 域名动态授权
+
+- 扩展不会在安装时默认拿到你所有 API 域名权限。
+- 当你在**笔记弹窗**或 **Options 设置页**点击“保存 API 配置”时，扩展会解析你填写的 Base URL，只申请该域名（如 `https://api.xxx.com/*`）的访问权限。
+- 新域名首次保存会先出现扩展内的“安全说明”确认弹窗；你确认后才会出现浏览器原生权限弹窗。
+- 安全说明会明确：仅向你填写的 API 服务发送 API Key 与请求数据，不会上传到开发者服务器。
+- 如果你在前置说明中取消，或在浏览器原生权限弹窗中拒绝，该配置都不会保存。
+- 已授权的同域名再次保存不会重复弹窗。
+- 如果你拒绝授权，该配置不会保存，并提示：`未授予该 API 域名的网络访问权限，无法使用该接口。`
+#### 3. 修改您复制和粘贴的数据
 
 这是因为扩展支持：
 
@@ -277,4 +288,5 @@ All your notes and progress stay in your local browser by default. Optional feat
 
 ### License
 [MIT](./LICENSE) © 2026 cao
+
 

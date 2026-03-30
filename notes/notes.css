@@ -1,6 +1,6 @@
 ﻿/**
  * 笔记网页样式
- * 版本：1.0.80
+ * 版本：1.0.81
  */
 
 :root {
@@ -201,6 +201,7 @@ select {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 .workspace-header {
@@ -212,6 +213,9 @@ select {
   gap: 12px;
   background: rgba(248, 243, 234, 0.78);
   backdrop-filter: blur(4px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .workspace-title {
@@ -579,4 +583,5 @@ body.layout-editor-only .editor-body {
     scroll-behavior: auto !important;
   }
 }
+
 

@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Popup 概览渲染
- * 版本：1.0.68
+ * 版本：1.0.81
  */
 
 (function () {
@@ -44,7 +44,7 @@
         }).join('');
 
         if (elements.footerNote) {
-            elements.footerNote.textContent = '本地默认存储，支持云同步；在“设置与同步”管理。';
+            elements.footerNote.innerHTML = '在 <span class="footer-note-key">设置与同步</span> 中管理同步和 API 配置';
         }
     }
 

@@ -1,6 +1,6 @@
 ﻿/**
  * LeetCode 笔记助手 UI 模块
- * 版本：1.0.80
+ * 版本：1.0.81
  */
 
 (function () {
@@ -25,6 +25,11 @@
     let lastAIResult = "";
     let lastAiResultIsError = false;
     let generationController = null;
+    let isGenerating = false;
+    let isPageScrollLocked = false;
+    let htmlOverflowBeforeGeneration = '';
+    let bodyOverflowBeforeGeneration = '';
+    let currentStreamStatus = null;
     let hasWarnedMissingRecommendationHelper = false;
     let hasWarnedStorageUnavailable = false;
     let hasWarnedProblemDataUnavailable = false;
@@ -49,6 +54,163 @@
         if (duration > 0) {
             setTimeout(() => toast.style.display = 'none', duration);
         }
+    }
+
+    function setGeneratingState(generating) {
+        isGenerating = Boolean(generating);
+        const stopButton = document.getElementById('btn-stop-generate');
+        if (stopButton) {
+            stopButton.disabled = !isGenerating;
+        }
+    }
+
+    function syncStopGenerateButtonVisibility() {
+        const stopButton = document.getElementById('btn-stop-generate');
+        if (!stopButton) return;
+        const platform = document.getElementById('p-ai-platform')?.value || 'copy_only';
+        stopButton.style.display = platform === 'direct_api' ? 'inline-flex' : 'none';
+    }
+
+    function lockPageScrollForGeneration() {
+        if (isPageScrollLocked) return;
+        isPageScrollLocked = true;
+        htmlOverflowBeforeGeneration = document.documentElement ? document.documentElement.style.overflow : '';
+        bodyOverflowBeforeGeneration = document.body ? document.body.style.overflow : '';
+        if (document.documentElement) {
+            document.documentElement.style.overflow = 'hidden';
+        }
+        if (document.body) {
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function unlockPageScrollForGeneration() {
+        if (!isPageScrollLocked) return;
+        if (document.documentElement) {
+            document.documentElement.style.overflow = htmlOverflowBeforeGeneration;
+        }
+        if (document.body) {
+            document.body.style.overflow = bodyOverflowBeforeGeneration;
+        }
+        htmlOverflowBeforeGeneration = '';
+        bodyOverflowBeforeGeneration = '';
+        isPageScrollLocked = false;
+    }
+
+    function scrollModalToBottomAfterStop() {
+        const container = modal || document.getElementById('note-helper-modal');
+        if (!container) return;
+        const targetTop = container.scrollHeight;
+        if (typeof container.scrollTo === 'function') {
+            container.scrollTo({
+                top: targetTop,
+                behavior: 'smooth'
+            });
+        } else {
+            container.scrollTop = targetTop;
+        }
+    }
+
+    function setApiStreamStatus(text, options = {}) {
+        const statusElement = document.getElementById('api-stream-status');
+        if (!statusElement) return;
+        const statusText = String(text || '').trim();
+        statusElement.textContent = statusText;
+        statusElement.style.display = statusText ? 'block' : 'none';
+        statusElement.classList.toggle('is-error', Boolean(options.isError));
+    }
+
+    function resetThinkingPanel() {
+        const details = document.getElementById('api-thinking-details');
+        const content = document.getElementById('api-thinking-content');
+        if (details) {
+            details.hidden = true;
+            details.open = false;
+        }
+        if (content) {
+            content.textContent = '';
+        }
+    }
+
+    function updateThinkingPanel(thinkingText) {
+        const text = String(thinkingText || '');
+        const details = document.getElementById('api-thinking-details');
+        const content = document.getElementById('api-thinking-content');
+        if (!details || !content) return;
+        if (!text.trim()) {
+            details.hidden = true;
+            content.textContent = '';
+            return;
+        }
+        details.hidden = false;
+        content.textContent = text;
+    }
+
+    function initStreamStatusState() {
+        currentStreamStatus = {
+            startedAt: Date.now(),
+            thoughtSeconds: 0,
+            firstVisibleTokenAt: 0,
+            hasVisibleToken: false
+        };
+        setApiStreamStatus('正在思考');
+        resetThinkingPanel();
+    }
+
+    function markFirstVisibleTokenIfNeeded(text) {
+        if (!currentStreamStatus || currentStreamStatus.hasVisibleToken) return;
+        const normalized = String(text || '').trim();
+        if (!normalized) return;
+        currentStreamStatus.firstVisibleTokenAt = Date.now();
+        currentStreamStatus.hasVisibleToken = true;
+        currentStreamStatus.thoughtSeconds = Math.max(1, Math.ceil((currentStreamStatus.firstVisibleTokenAt - currentStreamStatus.startedAt) / 1000));
+        setApiStreamStatus(`Thought for ${currentStreamStatus.thoughtSeconds} s`);
+    }
+
+    function getApiPermissionHelper() {
+        return window.NoteHelperApiDomainPermission || null;
+    }
+
+    async function ensureApiDomainPermissionForUrl(apiUrl) {
+        const helper = getApiPermissionHelper();
+        if (!helper || typeof helper.ensureApiDomainPermission !== 'function') {
+            return {
+                ok: false,
+                message: '权限模块未加载，请刷新后重试。'
+            };
+        }
+        return helper.ensureApiDomainPermission(apiUrl, {
+            requestIfMissing: true
+        });
+    }
+
+    async function shouldConfirmOverwriteBeforeSave(text) {
+        const store = getProblemDataStore();
+        if (!store || typeof store.getProblemRecordByUrl !== 'function') return true;
+        const helper = getApiPermissionHelper();
+
+        let overwriteConfirmEnabled = true;
+        if (helper && typeof helper.getOverwriteConfirmEnabled === 'function') {
+            overwriteConfirmEnabled = await helper.getOverwriteConfirmEnabled(true);
+        } else if (window.Storage && typeof window.Storage.get === 'function') {
+            overwriteConfirmEnabled = await window.Storage.get('note_helper_overwrite_confirm_enabled', true);
+        } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            const data = await chrome.storage.local.get(['note_helper_overwrite_confirm_enabled']);
+            overwriteConfirmEnabled = typeof data.note_helper_overwrite_confirm_enabled === 'boolean'
+                ? data.note_helper_overwrite_confirm_enabled
+                : true;
+        }
+
+        if (!overwriteConfirmEnabled) return true;
+
+        const existingRecord = await store.getProblemRecordByUrl(window.location.href);
+        const existingNote = String(existingRecord && existingRecord.noteContent || '').trim();
+        if (!existingNote || existingNote === String(text || '').trim()) {
+            return true;
+        }
+
+        const confirmed = window.confirm('将覆盖原有记录，是否继续');
+        return confirmed;
     }
 
     function hideAchievementOverlay() {
@@ -576,6 +738,8 @@
                     }
                 }
             });
+            setGeneratingState(false);
+            unlockPageScrollForGeneration();
             return;
         }
 
@@ -583,6 +747,8 @@
             showToast("已取消本次生成");
         }
         resetGenerateButtonState();
+        setGeneratingState(false);
+        unlockPageScrollForGeneration();
     }
 
     function closeModalAndReset() {
@@ -590,6 +756,8 @@
         if (modal) {
             modal.style.display = 'none';
         }
+        setApiStreamStatus('');
+        resetThinkingPanel();
     }
 
     function getIconPositionKey(iconType) {
@@ -851,9 +1019,7 @@
         lastAiResultIsError = Boolean(isError);
         const renderEl = document.getElementById('api-output-render');
         const rawEl = document.getElementById('api-output');
-        const canSaveResult = lastAIResult &&
-            lastAIResult !== '正在连接 AI...' &&
-            !lastAiResultIsError;
+        const canSaveResult = Boolean(lastAIResult && !lastAiResultIsError);
 
         if (renderEl) {
             const helper = window.NoteHelperMarkdownStreamRender;
@@ -1061,7 +1227,15 @@
         </div>
 
         <div id="api-result-container">
-            <label style="font-weight:600;display:block;margin-bottom:8px">🤖 AI 生成结果</label>
+            <div class="api-result-header">
+                <label style="font-weight:600;display:block;margin-bottom:8px">🤖 AI 生成结果</label>
+                <button class="btn btn-secondary" id="btn-stop-generate" type="button" style="display:none" disabled>停止生成</button>
+            </div>
+            <div id="api-stream-status" class="api-stream-status" style="display:none"></div>
+            <details id="api-thinking-details" class="api-thinking-details" hidden>
+                <summary>查看思考内容（实验性）</summary>
+                <pre id="api-thinking-content"></pre>
+            </details>
             <div id="api-output-render"></div>
             <textarea id="api-output" readonly></textarea>
             <button class="btn btn-secondary" id="btn-copy-result" style="width:100%">复制结果</button>
@@ -1126,11 +1300,22 @@
         const toggleApiSettings = () => {
             const platform = document.getElementById('p-ai-platform').value;
             const panel = document.getElementById('api-settings-panel');
+            const resultContainer = document.getElementById('api-result-container');
             if (platform === 'direct_api') {
                 panel.classList.add('show');
             } else {
+                if (isGenerating) {
+                    cancelActiveGeneration({ showHint: false });
+                }
                 panel.classList.remove('show');
+                if (resultContainer) {
+                    resultContainer.style.display = 'none';
+                }
+                setApiStreamStatus('');
+                resetThinkingPanel();
+                setGeneratingState(false);
             }
+            syncStopGenerateButtonVisibility();
             syncGenerateButtonForPlatformChange();
         };
 
@@ -1186,6 +1371,10 @@
             document.getElementById('p-feeling').value = "";
             document.getElementById('api-result-container').style.display = 'none';
             showRenderedResult("");
+            setGeneratingState(false);
+            syncStopGenerateButtonVisibility();
+            setApiStreamStatus('');
+            resetThinkingPanel();
 
             // 加载 API 设置
             const apiSettings = await Storage.getMultiple(['api_url', 'api_key', 'api_model']);
@@ -1263,6 +1452,24 @@
             closeModalAndReset();
         };
 
+        const stopGenerateButton = document.getElementById('btn-stop-generate');
+        if (stopGenerateButton) {
+            stopGenerateButton.onclick = () => {
+                const hasVisibleToken = Boolean(currentStreamStatus && currentStreamStatus.hasVisibleToken);
+                cancelActiveGeneration({ showHint: true });
+                if (hasVisibleToken) {
+                    const generateButton = document.getElementById('btn-generate');
+                    if (generateButton) {
+                        generateButton.textContent = '重新生成';
+                        generateButton.disabled = false;
+                        generateButton.classList.remove('btn-loading');
+                    }
+                }
+                setApiStreamStatus('已停止生成');
+                requestAnimationFrame(() => scrollModalToBottomAfterStop());
+            };
+        }
+
         document.getElementById('btn-manual-add').onclick = async () => {
             const actionResult = await trackCurrentProblemAction('manual_added', {
                 title: getCurrentProblemRecordTitle()
@@ -1303,6 +1510,11 @@
             }
 
             try {
+                const allowOverwrite = await shouldConfirmOverwriteBeforeSave(text);
+                if (!allowOverwrite) {
+                    showToast('已取消保存');
+                    return;
+                }
                 const saveResult = await store.saveProblemNote({
                     url: window.location.href,
                     title: getCurrentProblemRecordTitle(),
@@ -1486,15 +1698,27 @@ ${content}`;
 
             // 保存 API 配置
             if (aiPlatform === 'direct_api') {
+                if (!apiUrl || !apiKey) {
+                    showToast('请填写 API URL 和 Key');
+                    if (!apiUrl) {
+                        document.getElementById('api-url').focus();
+                    } else {
+                        document.getElementById('api-key').focus();
+                    }
+                    return;
+                }
+
+                const permissionResult = await ensureApiDomainPermissionForUrl(apiUrl);
+                if (!permissionResult.ok) {
+                    showToast(permissionResult.message || '未授予该 API 域名的网络访问权限，无法使用该接口。', 3600);
+                    return;
+                }
+
                 await Storage.setMultiple({
                     api_url: apiUrl,
                     api_key: apiKey,
                     api_model: apiModel
                 });
-
-                if (!apiUrl || !apiKey) {
-                    return alert("请填写 API URL 和 Key！");
-                }
             }
 
             const utils = window.NoteHelperUtils;
@@ -1515,17 +1739,18 @@ ${content}`;
                 }
 
                 const resultContainer = document.getElementById('api-result-container');
-                const generationState = generateCtrl.startGeneration({
-                    loadingText: '⏳ 生成中...'
-                });
+                const generationState = generateCtrl.startGeneration();
                 const requestId = generationState.requestId;
                 let finalState = 'reset';
+                setGeneratingState(true);
+                lockPageScrollForGeneration();
+                initStreamStatusState();
 
                 // 先显示 Prompt 已复制的提示
                 showToast("📋 Prompt 已复制到剪贴板，正在调用 AI...", 3000);
 
                 resultContainer.style.display = 'block';
-                showRenderedResult('正在连接 AI...', {
+                showRenderedResult('', {
                     isError: false,
                     renderMode: 'stream'
                 });
@@ -1537,17 +1762,23 @@ ${content}`;
                     const result = await window.ApiClient.callAI(apiUrl, apiKey, apiModel, prompt, (partialContent) => {
                         if (!generateCtrl.isCurrentRequest(requestId)) return;
                         const partialText = String(partialContent || '');
+                        generateCtrl.updateProgress(requestId, {
+                            charCount: partialText.length
+                        });
+                        markFirstVisibleTokenIfNeeded(partialText);
                         showRenderedResult(partialText, {
                             isError: false,
                             renderMode: 'stream'
                         });
-                        generateCtrl.updateProgress(requestId, {
-                            charCount: partialText.length
-                        });
                     }, {
-                        signal: generationState.signal
+                        signal: generationState.signal,
+                        onThinkingProgress: (thinkingText) => {
+                            if (!generateCtrl.isCurrentRequest(requestId)) return;
+                            updateThinkingPanel(thinkingText);
+                        }
                     });
                     if (!generateCtrl.isCurrentRequest(requestId)) return;
+                    markFirstVisibleTokenIfNeeded(result);
                     showRenderedResult(result, {
                         isError: false,
                         renderMode: 'markdown'
@@ -1567,13 +1798,17 @@ ${content}`;
                 } catch (err) {
                     if (!generateCtrl.isCurrentRequest(requestId)) return;
                     if (isAbortError(err)) {
-                        showRenderedResult('', {
-                            isError: false,
-                            renderMode: 'plain'
-                        });
-                        finalState = 'reset';
+                        setApiStreamStatus('已停止生成');
+                        if (!currentStreamStatus || !currentStreamStatus.hasVisibleToken) {
+                            showRenderedResult('', {
+                                isError: false,
+                                renderMode: 'plain'
+                            });
+                        }
+                        finalState = currentStreamStatus && currentStreamStatus.hasVisibleToken ? 'retry' : 'reset';
                     } else {
                         const errorMessage = getReadableErrorMessage(err, '生成失败，请稍后重试。');
+                        setApiStreamStatus('生成失败', { isError: true });
                         showRenderedResult(`生成失败：${errorMessage}`, {
                             isError: true,
                             renderMode: 'plain'
@@ -1586,6 +1821,9 @@ ${content}`;
                         state: finalState,
                         retryText: '重新生成'
                     });
+                    setGeneratingState(false);
+                    unlockPageScrollForGeneration();
+                    currentStreamStatus = null;
                 }
             } else {
                 const platform = AI_PLATFORMS[aiPlatform];
@@ -1610,4 +1848,5 @@ ${content}`;
 
     window.NoteHelperUI = { init };
 })();
+
 

@@ -1,5 +1,5 @@
 ﻿/* CodeNote Helper 样式 */
-/* 版本：1.0.80 */
+/* 版本：1.0.81 */
 
 /* 悬浮按钮 */
 #note-helper-btn {
@@ -228,8 +228,64 @@
   display: none;
 }
 
+.api-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.api-result-header label {
+  margin-bottom: 0 !important;
+}
+
+#btn-stop-generate {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
 #api-output {
   display: none;
+}
+
+.api-stream-status {
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.api-stream-status.is-error {
+  color: #b91c1c;
+}
+
+.api-thinking-details {
+  margin: 0 0 10px;
+  border: 1px solid #dbe5f3;
+  border-radius: 8px;
+  background: #f8fbff;
+  overflow: hidden;
+}
+
+.api-thinking-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #475569;
+  padding: 8px 10px;
+  user-select: none;
+}
+
+.api-thinking-details pre {
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  padding: 10px;
+  border-top: 1px solid #dbe5f3;
+  background: #eef4ff;
+  color: #334155;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 #api-output-render {
@@ -920,4 +976,5 @@ body.note-helper-icon-dragging {
     margin-right: 46px;
   }
 }
+
 

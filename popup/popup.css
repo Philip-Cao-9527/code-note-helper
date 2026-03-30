@@ -588,6 +588,17 @@ input {
   color: var(--text-muted);
 }
 
+.footer-note-key {
+  display: inline-block;
+  padding: 0 6px;
+  margin: 0 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(14, 165, 233, 0.18);
+  color: #dbeafe;
+  font-weight: 700;
+}
+
 .toast {
   position: fixed;
   left: 50%;

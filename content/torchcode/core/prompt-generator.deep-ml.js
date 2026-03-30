@@ -1,6 +1,6 @@
 ﻿/**
  * TorchCode Prompt 生成器（Deep-ML）
- * 版本：1.0.80
+ * 版本：1.0.81
  */
 
 (function () {
@@ -33,6 +33,7 @@
         const levelNum = shared.headingLevelToNumber(headingLevel);
         const h1 = '#'.repeat(levelNum);
         const h2 = '#'.repeat(levelNum + 1);
+        const h3 = '#'.repeat(levelNum + 2);
         const userLevel = data.userLevel || '小白';
         const levelGuide = shared.USER_LEVEL_GUIDE[userLevel] || shared.USER_LEVEL_GUIDE['小白'];
         const taskTitle = shared.sanitizeDeepMlText(data.taskTitle) || 'Deep-ML 练习';
@@ -40,9 +41,11 @@
         const link = resolvePrimaryLink(data);
         const description = shared.sanitizeDeepMlText(data.description || data.summary) || '未提供';
         const currentCode = shared.sanitizeDeepMlText(data.currentCode || data.starterCode) || '未提供';
+        const notesLiteral = String(data.notes || '').trim();
+        const mustIncludeCode = /我的题解.*有什么问题|题解.*有什么问题|代码.*有什么问题/i.test(notesLiteral);
 
         return `## 任务说明
-我是 Deep-ML【${userLevel}】，当前使用“仅答疑”模式。请你直接回答问题，不要输出完整笔记大纲。讲解风格请根据我的水平进行调整（${levelGuide.style}）。
+我是 Deep-ML【${userLevel}】，当前使用“仅答疑”模式。请使用与完整笔记模式一致的“原题解评价 + 用户疑问回应”范式，直接回答问题，不要输出完整笔记大纲。讲解风格请根据我的水平进行调整（${levelGuide.style}）。
 
 ## 输出格式要求（仅答疑模式）
 请严格按照以下结构输出（标题级别从 ${h1} 开始）：
@@ -60,17 +63,27 @@ ${h2} 当前用户题解
 ${shared.escapeFence(currentCode)}
 \`\`\`
 
-${h2} 用户疑问与体会原文
+${h2} 原题解评价
+- **完成度评分**：[X]/10
+- **正确性**：[结论 + 关键依据]
+- **时间复杂度**：[分析 + 推导过程]
+- **空间复杂度**：[分析 + 推导过程]
+- **形状/梯度/数值稳定性风险**：[逐条说明]
+
+${h2} 用户疑问与体会（强制）
+${h3} 逐条回应我的疑问与体会
 ${shared.buildQaOnlyUserNotesBlock(data.notes)}
 
-${h2} 逐条答疑（必须详细）
+请针对上述原文，使用与完整笔记模式一致的范式回答：
 1. [结论] + [原因] + [具体步骤] + [边界/反例] + [常见误区]
 2. [继续逐条回答，每条都要落到用户原文对应的问题点]
 [每条答疑不少于 180 字；若用户原文有 N 个疑问，至少输出 N 条答疑，不得合并]
 [“逐条答疑”总字数不少于 520 字；若用户原文为空，也要输出不少于 320 字的问题拆解与建议]
 
-${h2} 必要代码（仅在问题需要代码时输出）
-[只有在答疑必须依赖代码时，才输出完整可运行代码块；若不需要代码，请明确写“本题当前疑问无需新增代码”。]
+${h2} 必要代码
+${mustIncludeCode
+                ? '[本题必须输出完整可运行代码块，并解释“原实现问题 -> 修改方案 -> 预期收益”，禁止只给文字建议。]'
+                : '[仅在疑问涉及实现细节时输出完整可运行代码；若确实无需代码，请明确写“本题当前疑问无需新增代码”。]'}
 
 ## 原始输入（输入项保持原样）
 - 练习标题：${taskTitle}
@@ -85,10 +98,12 @@ ${h2} 必要代码（仅在问题需要代码时输出）
 ## 强制要求
 1. 只输出一个题目名称与一个题目链接。
 2. 若“我的疑问/体会”非空，必须逐字原样输出原文（包含标点、顺序、换行），否则视为失败并重写。
-3. 答疑必须逐条对应用户问题，禁止只写概述；每条都必须包含“结论、原因、步骤、边界/反例、常见误区”。
-4. 仅在必要时输出完整代码块，不需要代码时不要硬塞代码。
-5. “逐条答疑”总字数必须达标：非空疑问不少于 520 字；空疑问不少于 320 字。
-6. 直接输出 Markdown 正文，不要输出“好的/当然可以/下面开始”等套话。`;
+3. 必须输出“原题解评价”小节，评价模板需与完整笔记模式一致，禁止省略。
+4. “逐条回应我的疑问与体会”必须逐条对应用户问题，禁止只写概述。
+5. 若用户疑问包含“我的题解有什么问题”或同义表达，必须输出完整可运行代码块；只给文字视为失败。
+6. 若需要改代码，必须同时输出“修改点清单”，逐条说明改动原因与收益。
+7. “逐条答疑”总字数必须达标：非空疑问不少于 520 字；空疑问不少于 320 字。
+8. 直接输出 Markdown 正文，不要输出“好的/当然可以/下面开始”等套话。`;
     }
 
     function generateDeepMlPrompt(data) {
@@ -232,4 +247,5 @@ ${notesBlock}
         generateDeepMlPrompt
     };
 })();
+
 

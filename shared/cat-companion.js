@@ -1,6 +1,6 @@
-/**
+﻿/**
  * 共享猫猫组件
- * 版本：1.0.69
+ * 版本：1.0.81
  */
 
 (function () {
@@ -30,7 +30,9 @@
 #${CONTAINER_ID} {
   position: fixed;
   bottom: 14px;
-  left: -156px;
+  left: 50%;
+  transform: translate3d(calc(-50vw - 180px), 0, 0);
+  will-change: transform;
   z-index: 9998;
   pointer-events: none;
 }
@@ -44,12 +46,12 @@
   display: none !important;
 }
 @keyframes nh-cat-walk-in {
-  0% { left: -156px; }
-  100% { left: calc(50% - 61px); }
+  0% { transform: translate3d(calc(-50vw - 180px), 0, 0); }
+  100% { transform: translate3d(-61px, 0, 0); }
 }
 @keyframes nh-cat-walk-out {
-  0% { left: calc(50% - 61px); }
-  100% { left: 110%; }
+  0% { transform: translate3d(-61px, 0, 0); }
+  100% { transform: translate3d(calc(50vw + 180px), 0, 0); }
 }
 #${CONTAINER_ID} .nh-cat-bubble {
   position: absolute;
@@ -150,8 +152,8 @@
     animation: none !important;
     transition: none !important;
   }
-  #${CONTAINER_ID}.${WALK_IN_CLASS} { left: calc(50% - 61px); }
-  #${CONTAINER_ID}.${LEAVING_CLASS} { left: 110%; }
+  #${CONTAINER_ID}.${WALK_IN_CLASS} { transform: translate3d(-61px, 0, 0); }
+  #${CONTAINER_ID}.${LEAVING_CLASS} { transform: translate3d(calc(50vw + 180px), 0, 0); }
 }
         `;
         document.head.appendChild(style);
@@ -249,7 +251,7 @@
             resetPositionTimer = setTimeout(() => {
                 if (!mounted) return;
                 container.classList.remove(LEAVING_CLASS);
-                container.style.left = '-156px';
+                container.style.transform = '';
             }, WALK_OUT_DURATION_MS);
         }
 
@@ -323,3 +325,4 @@
 
     window.NoteHelperCatCompanion = { create };
 })();
+

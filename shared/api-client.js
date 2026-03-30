@@ -1,6 +1,6 @@
-/**
+﻿/**
  * 共享 API 客户端
- * 版本：1.0.47
+ * 版本：1.0.81
  */
 
 (function () {
@@ -89,64 +89,346 @@
         });
     }
 
-    function parseSseText(rawText, onProgress) {
-        const source = String(rawText || '');
-        if (!source.trim()) return '';
+    function normalizeHandlers(onProgress, options = {}) {
+        const handlers = {
+            onVisibleProgress: typeof onProgress === 'function' ? onProgress : null,
+            onThinkingProgress: typeof options.onThinkingProgress === 'function' ? options.onThinkingProgress : null
+        };
+        return handlers;
+    }
 
-        let fullContent = '';
+    function createThinkTagFilter() {
+        const OPEN_TAG = '<think>';
+        const CLOSE_TAG = '</think>';
+        const OPEN_TAIL = OPEN_TAG.length;
+        const CLOSE_TAIL = CLOSE_TAG.length;
+
+        let inThink = false;
+        let carry = '';
+
+        function takeSafePrefix(text, tailSize) {
+            if (!text) return { head: '', rest: '' };
+            const safeLen = Math.max(0, text.length - tailSize);
+            return {
+                head: text.slice(0, safeLen),
+                rest: text.slice(safeLen)
+            };
+        }
+
+        function consume(chunk) {
+            let text = `${carry}${String(chunk || '')}`;
+            carry = '';
+            let visiblePart = '';
+            let thinkingPart = '';
+
+            while (text) {
+                if (inThink) {
+                    const closeIndex = text.indexOf(CLOSE_TAG);
+                    if (closeIndex === -1) {
+                        const { head, rest } = takeSafePrefix(text, CLOSE_TAIL - 1);
+                        thinkingPart += head;
+                        carry = rest;
+                        break;
+                    }
+                    thinkingPart += text.slice(0, closeIndex);
+                    text = text.slice(closeIndex + CLOSE_TAG.length);
+                    inThink = false;
+                    continue;
+                }
+
+                const openIndex = text.indexOf(OPEN_TAG);
+                if (openIndex === -1) {
+                    const { head, rest } = takeSafePrefix(text, OPEN_TAIL - 1);
+                    visiblePart += head;
+                    carry = rest;
+                    break;
+                }
+
+                visiblePart += text.slice(0, openIndex);
+                text = text.slice(openIndex + OPEN_TAG.length);
+                inThink = true;
+            }
+
+            return {
+                visiblePart,
+                thinkingPart
+            };
+        }
+
+        function flush() {
+            if (!carry) {
+                return {
+                    visiblePart: '',
+                    thinkingPart: ''
+                };
+            }
+            const remaining = carry;
+            carry = '';
+            if (inThink) {
+                return {
+                    visiblePart: '',
+                    thinkingPart: remaining
+                };
+            }
+            return {
+                visiblePart: remaining,
+                thinkingPart: ''
+            };
+        }
+
+        return {
+            consume,
+            flush
+        };
+    }
+
+    function extractVisibleFromContentNode(node) {
+        if (typeof node === 'string') {
+            return node;
+        }
+        if (Array.isArray(node)) {
+            let output = '';
+            node.forEach((item) => {
+                if (typeof item === 'string') {
+                    output += item;
+                    return;
+                }
+                if (!item || typeof item !== 'object') return;
+
+                const type = String(item.type || '').toLowerCase();
+                if (type.includes('reason') || type.includes('think')) return;
+
+                if (typeof item.text === 'string') {
+                    output += item.text;
+                    return;
+                }
+                if (typeof item.content === 'string') {
+                    output += item.content;
+                    return;
+                }
+                if (typeof item.value === 'string') {
+                    output += item.value;
+                }
+            });
+            return output;
+        }
+        if (node && typeof node === 'object') {
+            if (typeof node.text === 'string') return node.text;
+            if (typeof node.content === 'string') return node.content;
+            if (Array.isArray(node.content)) return extractVisibleFromContentNode(node.content);
+            if (typeof node.value === 'string') return node.value;
+        }
+        return '';
+    }
+
+    function extractThinkingFromContentNode(node) {
+        if (!node) return '';
+        if (typeof node === 'string') return '';
+
+        if (Array.isArray(node)) {
+            let output = '';
+            node.forEach((item) => {
+                if (!item || typeof item !== 'object') return;
+                const type = String(item.type || '').toLowerCase();
+                if (!type.includes('reason') && !type.includes('think')) return;
+
+                if (typeof item.text === 'string') {
+                    output += item.text;
+                    return;
+                }
+                if (typeof item.content === 'string') {
+                    output += item.content;
+                    return;
+                }
+                if (typeof item.value === 'string') {
+                    output += item.value;
+                }
+            });
+            return output;
+        }
+
+        if (typeof node === 'object') {
+            if (typeof node.reasoning_content === 'string') return node.reasoning_content;
+            if (typeof node.reasoning === 'string') return node.reasoning;
+            if (typeof node.thinking === 'string') return node.thinking;
+            if (typeof node.thought === 'string') return node.thought;
+        }
+
+        return '';
+    }
+
+    function extractDeltaParts(data) {
+        const choice = data && data.choices && data.choices[0] ? data.choices[0] : {};
+        const delta = choice && typeof choice.delta === 'object' && choice.delta ? choice.delta : null;
+        const message = choice && typeof choice.message === 'object' && choice.message ? choice.message : null;
+
+        const source = delta || message || {};
+
+        const visiblePart = extractVisibleFromContentNode(source.content);
+        let thinkingPart = '';
+
+        thinkingPart += extractThinkingFromContentNode(source.content);
+
+        const reasoningCandidates = [
+            source.reasoning_content,
+            source.reasoning,
+            source.thinking,
+            source.thought,
+            choice.reasoning_content,
+            choice.reasoning,
+            data && data.reasoning_content,
+            data && data.reasoning,
+            data && data.thinking,
+            data && data.thought
+        ];
+
+        for (const candidate of reasoningCandidates) {
+            if (typeof candidate === 'string' && candidate) {
+                thinkingPart += candidate;
+            }
+        }
+
+        return {
+            visiblePart,
+            thinkingPart
+        };
+    }
+
+    function createStreamAccumulator(handlers) {
+        const thinkTagFilter = createThinkTagFilter();
+        let visibleText = '';
+        let thinkingText = '';
+
+        function appendThinking(rawChunk) {
+            const chunk = String(rawChunk || '');
+            if (!chunk) return;
+            thinkingText += chunk;
+            if (handlers.onThinkingProgress) {
+                handlers.onThinkingProgress(thinkingText);
+            }
+        }
+
+        function appendVisible(rawChunk) {
+            const chunk = String(rawChunk || '');
+            if (!chunk) return;
+            const separated = thinkTagFilter.consume(chunk);
+            if (separated.thinkingPart) {
+                appendThinking(separated.thinkingPart);
+            }
+            if (!separated.visiblePart) return;
+            visibleText += separated.visiblePart;
+            if (handlers.onVisibleProgress) {
+                handlers.onVisibleProgress(visibleText);
+            }
+        }
+
+        function appendFromPayload(data) {
+            if (!data || typeof data !== 'object') return;
+            const parsed = extractDeltaParts(data);
+            if (parsed.thinkingPart) {
+                appendThinking(parsed.thinkingPart);
+            }
+            if (parsed.visiblePart) {
+                appendVisible(parsed.visiblePart);
+            }
+        }
+
+        function finalize() {
+            const remain = thinkTagFilter.flush();
+            if (remain.thinkingPart) {
+                appendThinking(remain.thinkingPart);
+            }
+            if (remain.visiblePart) {
+                visibleText += remain.visiblePart;
+                if (handlers.onVisibleProgress) {
+                    handlers.onVisibleProgress(visibleText);
+                }
+            }
+            return {
+                visibleText,
+                thinkingText
+            };
+        }
+
+        return {
+            appendFromPayload,
+            finalize
+        };
+    }
+
+    function parseSseText(rawText, handlers) {
+        const source = String(rawText || '');
+        if (!source.trim()) {
+            return {
+                visibleText: '',
+                thinkingText: ''
+            };
+        }
+
+        const accumulator = createStreamAccumulator(handlers);
         const lines = source.split(/\r?\n/);
+
         for (const rawLine of lines) {
             const line = rawLine.trim();
             if (!line || !line.startsWith('data:')) continue;
+
             const payload = line.slice(5).trim();
             if (!payload || payload === '[DONE]') continue;
 
             try {
                 const data = JSON.parse(payload);
-                const delta = data.choices?.[0]?.delta?.content || data.choices?.[0]?.message?.content || '';
-                if (!delta) continue;
-                fullContent += delta;
-                if (typeof onProgress === 'function') {
-                    onProgress(fullContent);
-                }
+                accumulator.appendFromPayload(data);
             } catch (error) {
                 // SSE 片段可能含有非 JSON 行，忽略即可
             }
         }
 
-        return fullContent;
+        return accumulator.finalize();
     }
 
-    function tryParseJsonContent(rawText, onProgress) {
+    function tryParseJsonContent(rawText, handlers) {
         const source = String(rawText || '').trim();
-        if (!source) return '';
-        if (!source.startsWith('{') && !source.startsWith('[')) return '';
+        if (!source) {
+            return {
+                visibleText: '',
+                thinkingText: ''
+            };
+        }
+        if (!source.startsWith('{') && !source.startsWith('[')) {
+            return {
+                visibleText: '',
+                thinkingText: ''
+            };
+        }
 
         try {
             const data = JSON.parse(source);
-            const fullContent = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.delta?.content || '';
-            if (!fullContent) return '';
-            if (typeof onProgress === 'function') {
-                onProgress(fullContent);
-            }
-            return fullContent;
+            const accumulator = createStreamAccumulator(handlers);
+            accumulator.appendFromPayload(data);
+            return accumulator.finalize();
         } catch (error) {
-            return '';
+            return {
+                visibleText: '',
+                thinkingText: ''
+            };
         }
     }
 
-    async function readSseStream(response, onProgress) {
+    async function readSseStream(response, handlers) {
         if (!response.body || typeof response.body.getReader !== 'function') {
             const text = await response.text();
-            const fromSse = parseSseText(text, onProgress);
-            if (fromSse) return fromSse;
-            return tryParseJsonContent(text, onProgress);
+            const parsedFromSse = parseSseText(text, handlers);
+            if (parsedFromSse.visibleText || parsedFromSse.thinkingText) {
+                return parsedFromSse;
+            }
+            return tryParseJsonContent(text, handlers);
         }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        const accumulator = createStreamAccumulator(handlers);
+
         let buffer = '';
-        let fullContent = '';
         let rawText = '';
 
         while (true) {
@@ -163,17 +445,13 @@
             for (const rawLine of lines) {
                 const line = rawLine.trim();
                 if (!line || !line.startsWith('data:')) continue;
+
                 const payload = line.slice(5).trim();
                 if (!payload || payload === '[DONE]') continue;
 
                 try {
                     const data = JSON.parse(payload);
-                    const delta = data.choices?.[0]?.delta?.content || '';
-                    if (!delta) continue;
-                    fullContent += delta;
-                    if (typeof onProgress === 'function') {
-                        onProgress(fullContent);
-                    }
+                    accumulator.appendFromPayload(data);
                 } catch (error) {
                     // JSON 可能被拆到下一段，继续等待即可
                 }
@@ -181,21 +459,27 @@
         }
 
         if (buffer.trim()) {
-            const tail = parseSseText(buffer, null);
-            if (tail) {
-                fullContent += tail;
-                if (typeof onProgress === 'function') {
-                    onProgress(fullContent);
+            const lines = buffer.split(/\r?\n/);
+            for (const rawLine of lines) {
+                const line = rawLine.trim();
+                if (!line || !line.startsWith('data:')) continue;
+                const payload = line.slice(5).trim();
+                if (!payload || payload === '[DONE]') continue;
+                try {
+                    const data = JSON.parse(payload);
+                    accumulator.appendFromPayload(data);
+                } catch (error) {
+                    // 末尾残片不是完整 JSON 时忽略，稍后走 JSON 回退。
                 }
             }
         }
 
-        if (!fullContent) {
-            const fromJson = tryParseJsonContent(rawText || buffer, onProgress);
-            if (fromJson) return fromJson;
+        const finalized = accumulator.finalize();
+        if (finalized.visibleText || finalized.thinkingText) {
+            return finalized;
         }
 
-        return fullContent;
+        return tryParseJsonContent(rawText || buffer, handlers);
     }
 
     function ensureMessagingAvailable() {
@@ -210,7 +494,9 @@
             throw new Error('接口地址不能为空，请检查 API URL 配置。');
         }
 
-        const useStream = typeof onProgress === 'function';
+        const handlers = normalizeHandlers(onProgress, options);
+        const useStream = Boolean(handlers.onVisibleProgress || handlers.onThinkingProgress);
+
         const externalSignal = options && options.signal;
         throwIfAborted(externalSignal);
 
@@ -232,9 +518,9 @@
                     throw createHttpStatusError(response.status, response.statusText);
                 }
 
-                const fullContent = await readSseStream(response, onProgress);
-                if (fullContent) {
-                    return fullContent;
+                const streamResult = await readSseStream(response, handlers);
+                if (streamResult.visibleText) {
+                    return streamResult.visibleText;
                 }
             } catch (fetchError) {
                 if (isAbortError(fetchError)) {
@@ -267,19 +553,24 @@
             }
 
             if (useStream && typeof response.data === 'string') {
-                const streamed = parseSseText(response.data, onProgress);
-                if (streamed) {
-                    return streamed;
+                const streamed = parseSseText(response.data, handlers);
+                if (streamed.visibleText) {
+                    return streamed.visibleText;
                 }
             }
 
             const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-            const fullContent = data?.choices?.[0]?.message?.content || '';
+            const directPayload = extractDeltaParts(data);
+            const fullContent = directPayload.visiblePart || '';
             if (!fullContent) {
                 throw new Error('接口未返回有效内容，请稍后重试。');
             }
-            if (typeof onProgress === 'function') {
-                onProgress(fullContent);
+
+            if (handlers.onThinkingProgress && directPayload.thinkingPart) {
+                handlers.onThinkingProgress(directPayload.thinkingPart);
+            }
+            if (handlers.onVisibleProgress) {
+                handlers.onVisibleProgress(fullContent);
             }
             return fullContent;
         } catch (error) {

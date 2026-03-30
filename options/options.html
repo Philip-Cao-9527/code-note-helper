@@ -187,6 +187,16 @@
                 <button class="btn btn-secondary" id="btn-reset-api">恢复默认</button>
                 <button class="btn btn-primary" id="btn-save-api">保存 API 配置</button>
             </div>
+            <div class="switch-row" style="margin-top: 14px;">
+                <div class="switch-copy">
+                    <div class="switch-title">保存覆盖前提醒</div>
+                    <div class="switch-desc">开启后，保存到本地记录时若已存在笔记会弹出确认。</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="overwrite-confirm-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
             <div class="sync-dirty-hint" id="api-dirty-hint" style="display: none; margin-top: 12px;">
                 API 配置已修改，请先点击“保存 API 配置”。未保存直接离开页面会持续弹出浏览器确认提醒。
             </div>
@@ -197,6 +207,7 @@
 
     <script src="../shared/storage.js"></script>
     <script src="../shared/messaging.js"></script>
+    <script src="../shared/api-domain-permission.js"></script>
     <script src="../shared/problem-data/constants.js"></script>
     <script src="../shared/problem-data/helpers.js"></script>
     <script src="../shared/problem-data/sync-core.js"></script>

@@ -1,6 +1,6 @@
 ﻿/**
  * 高级设置页脚本
- * 版本：1.0.80
+ * 版本：1.0.81
  */
 
 (function () {
@@ -91,6 +91,7 @@
             apiUrl: document.getElementById('api-url'),
             apiKey: document.getElementById('api-key'),
             apiModel: document.getElementById('api-model'),
+            overwriteConfirmToggle: document.getElementById('overwrite-confirm-toggle'),
             btnSaveApi: document.getElementById('btn-save-api'),
             btnResetApi: document.getElementById('btn-reset-api'),
             cloudSyncSection: document.getElementById('cloud-sync-section'),
@@ -98,6 +99,7 @@
         };
 
         const showToast = createToast(elements.toast);
+        const permissionHelper = window.NoteHelperApiDomainPermission || null;
         if (elements.webdavSettingsPanel) {
             elements.webdavSettingsPanel.style.display = 'none';
         }
@@ -228,6 +230,16 @@
             elements.apiUrl.value = result.api_url || 'https://api.openai.com/v1';
             elements.apiKey.value = result.api_key || '';
             elements.apiModel.value = result.api_model || 'gpt-4o';
+            if (elements.overwriteConfirmToggle) {
+                if (permissionHelper && typeof permissionHelper.getOverwriteConfirmEnabled === 'function') {
+                    elements.overwriteConfirmToggle.checked = await permissionHelper.getOverwriteConfirmEnabled(true);
+                } else {
+                    const fallback = await chrome.storage.local.get(['note_helper_overwrite_confirm_enabled']);
+                    elements.overwriteConfirmToggle.checked = typeof fallback.note_helper_overwrite_confirm_enabled === 'boolean'
+                        ? fallback.note_helper_overwrite_confirm_enabled
+                        : true;
+                }
+            }
             clearApiDirty();
         }
 
@@ -510,11 +522,40 @@
 
         elements.btnSaveApi.addEventListener('click', async () => {
             try {
+                const apiUrl = elements.apiUrl.value.trim();
+                if (!apiUrl) {
+                    showToast('请先填写 API Base URL');
+                    elements.apiUrl.focus();
+                    return;
+                }
+
+                if (!permissionHelper || typeof permissionHelper.ensureApiDomainPermission !== 'function') {
+                    showToast('权限模块未加载，请刷新后重试');
+                    return;
+                }
+                const permissionResult = await permissionHelper.ensureApiDomainPermission(apiUrl, {
+                    requestIfMissing: true
+                });
+                if (!permissionResult.ok) {
+                    showToast(permissionResult.message || '未授予该 API 域名的网络访问权限，无法使用该接口。', 3200);
+                    return;
+                }
+
                 await chrome.storage.local.set({
-                    api_url: elements.apiUrl.value.trim(),
+                    api_url: apiUrl,
                     api_key: elements.apiKey.value.trim(),
                     api_model: elements.apiModel.value.trim() || 'gpt-4o'
                 });
+                if (elements.overwriteConfirmToggle) {
+                    const overwriteConfirmEnabled = Boolean(elements.overwriteConfirmToggle.checked);
+                    if (permissionHelper && typeof permissionHelper.setOverwriteConfirmEnabled === 'function') {
+                        await permissionHelper.setOverwriteConfirmEnabled(overwriteConfirmEnabled);
+                    } else {
+                        await chrome.storage.local.set({
+                            note_helper_overwrite_confirm_enabled: overwriteConfirmEnabled
+                        });
+                    }
+                }
                 clearApiDirty();
                 showToast('API 配置已保存');
             } catch (error) {
@@ -537,6 +578,11 @@
                 markApiDirty();
             });
         });
+        if (elements.overwriteConfirmToggle) {
+            elements.overwriteConfirmToggle.addEventListener('change', () => {
+                markApiDirty();
+            });
+        }
 
         try {
             await enforceCloudSyncDisabledState();
@@ -547,4 +593,5 @@
         }
     });
 })();
+
 

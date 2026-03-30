@@ -1,6 +1,6 @@
 ﻿/**
  * TorchCode 深度学习笔记助手样式
- * 版本：1.0.80
+ * 版本：1.0.81
  */
 
 :root {
@@ -903,6 +903,62 @@ body.tc-dragging * {
     display: none;
 }
 
+.tc-result-header-inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.tc-result-header-inline label {
+    margin-bottom: 0 !important;
+}
+
+#tc-stop-generate {
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.tc-stream-status {
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #475569;
+}
+
+.tc-stream-status.is-error {
+    color: #b91c1c;
+}
+
+.tc-thinking-details {
+    margin: 0 0 10px;
+    border: 1px solid #dbe5f3;
+    border-radius: 8px;
+    background: #f8fbff;
+    overflow: hidden;
+}
+
+.tc-thinking-details summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: #475569;
+    padding: 8px 10px;
+    user-select: none;
+}
+
+.tc-thinking-details pre {
+    margin: 0;
+    max-height: 160px;
+    overflow: auto;
+    padding: 10px;
+    border-top: 1px solid #dbe5f3;
+    background: #eef4ff;
+    color: #334155;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 #tc-result-render {
     width: 100%;
     min-height: 200px;
@@ -1011,4 +1067,5 @@ body.tc-dragging * {
         flex-direction: column;
     }
 }
+
 
