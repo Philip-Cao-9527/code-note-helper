@@ -1,6 +1,6 @@
 ﻿/**
  * 后台 Service Worker
- * 版本：1.0.81
+ * 版本：1.0.9
  */
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -44,28 +44,46 @@ async function handleMessage(message, sender) {
 function normalizeApiPermissionPattern(pattern) {
     const value = String(pattern || '').trim();
     if (!value) {
-        throw new Error('缺少 API 域名权限模式');
+        const error = new Error('缺少 API 域名权限模式');
+        error.errorType = 'permission_validation';
+        throw error;
     }
     if (!value.startsWith('https://') || !value.endsWith('/*')) {
-        throw new Error('API 域名权限模式无效，仅支持 https://host/*');
+        const error = new Error('API 域名权限模式无效，仅支持 https://host/*');
+        error.errorType = 'permission_validation';
+        throw error;
     }
     return value;
 }
 
 async function handleCheckApiDomainPermission({ pattern }) {
-    const normalizedPattern = normalizeApiPermissionPattern(pattern);
-    const granted = await chrome.permissions.contains({
-        origins: [normalizedPattern]
-    });
-    return { granted };
+    try {
+        const normalizedPattern = normalizeApiPermissionPattern(pattern);
+        const granted = await chrome.permissions.contains({
+            origins: [normalizedPattern]
+        });
+        return { granted };
+    } catch (error) {
+        if (error && error.errorType) throw error;
+        const wrapped = new Error(`API 域名权限检查失败：${error && error.message ? error.message : String(error)}`);
+        wrapped.errorType = 'permission_check';
+        throw wrapped;
+    }
 }
 
 async function handleRequestApiDomainPermission({ pattern }) {
-    const normalizedPattern = normalizeApiPermissionPattern(pattern);
-    const granted = await chrome.permissions.request({
-        origins: [normalizedPattern]
-    });
-    return { granted };
+    try {
+        const normalizedPattern = normalizeApiPermissionPattern(pattern);
+        const granted = await chrome.permissions.request({
+            origins: [normalizedPattern]
+        });
+        return { granted };
+    } catch (error) {
+        if (error && error.errorType) throw error;
+        const wrapped = new Error(`API 域名权限申请失败：${error && error.message ? error.message : String(error)}`);
+        wrapped.errorType = 'permission_request';
+        throw wrapped;
+    }
 }
 
 async function handleFetchRequest({ url, options = {} }) {

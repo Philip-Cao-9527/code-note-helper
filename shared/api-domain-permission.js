@@ -1,6 +1,6 @@
 /**
  * API 域名权限工具
- * 版本：1.0.81
+ * 版本：1.0.9
  */
 
 (function () {
@@ -77,25 +77,67 @@
     async function containsByRuntime(pattern) {
         const runtime = getRuntime();
         if (!runtime || typeof runtime.sendMessage !== 'function') {
-            throw new Error('runtime_unavailable');
+            const error = new Error('runtime_unavailable');
+            error.code = 'runtime_unavailable';
+            throw error;
         }
-        const response = await runtime.sendMessage({
-            type: 'CHECK_API_DOMAIN_PERMISSION',
-            pattern
-        });
-        return Boolean(response && response.granted);
+        let response;
+        try {
+            response = await runtime.sendMessage({
+                type: 'CHECK_API_DOMAIN_PERMISSION',
+                pattern
+            });
+        } catch (error) {
+            const wrapped = new Error(error && error.message ? error.message : String(error));
+            wrapped.code = /Extension context invalidated/i.test(wrapped.message)
+                ? 'runtime_context_invalidated'
+                : 'runtime_send_failed';
+            throw wrapped;
+        }
+        if (response && response.error) {
+            const error = new Error(String(response.error));
+            error.code = response.errorType || 'runtime_error';
+            throw error;
+        }
+        if (!response || typeof response.granted !== 'boolean') {
+            const error = new Error('runtime_invalid_response');
+            error.code = 'runtime_invalid_response';
+            throw error;
+        }
+        return response.granted;
     }
 
     async function requestByRuntime(pattern) {
         const runtime = getRuntime();
         if (!runtime || typeof runtime.sendMessage !== 'function') {
-            throw new Error('runtime_unavailable');
+            const error = new Error('runtime_unavailable');
+            error.code = 'runtime_unavailable';
+            throw error;
         }
-        const response = await runtime.sendMessage({
-            type: 'REQUEST_API_DOMAIN_PERMISSION',
-            pattern
-        });
-        return Boolean(response && response.granted);
+        let response;
+        try {
+            response = await runtime.sendMessage({
+                type: 'REQUEST_API_DOMAIN_PERMISSION',
+                pattern
+            });
+        } catch (error) {
+            const wrapped = new Error(error && error.message ? error.message : String(error));
+            wrapped.code = /Extension context invalidated/i.test(wrapped.message)
+                ? 'runtime_context_invalidated'
+                : 'runtime_send_failed';
+            throw wrapped;
+        }
+        if (response && response.error) {
+            const error = new Error(String(response.error));
+            error.code = response.errorType || 'runtime_error';
+            throw error;
+        }
+        if (!response || typeof response.granted !== 'boolean') {
+            const error = new Error('runtime_invalid_response');
+            error.code = 'runtime_invalid_response';
+            throw error;
+        }
+        return response.granted;
     }
 
     async function containsPermission(pattern) {
@@ -167,6 +209,23 @@
         return window.confirm(getPreflightNoticeMessage(origin));
     }
 
+    function normalizePermissionErrorReason(error, fallbackReason) {
+        const code = String(error && (error.code || error.message) || '').trim();
+        if (code === 'runtime_unavailable' || code === 'runtime_context_invalidated') {
+            return 'runtime_unavailable';
+        }
+        return fallbackReason;
+    }
+
+    async function waitForAckPersist(persistPromise) {
+        if (!persistPromise) return;
+        try {
+            await persistPromise;
+        } catch (error) {
+            // ack 记录失败不阻断主流程，避免影响授权结果返回。
+        }
+    }
+
     async function ensureApiDomainPermission(rawUrl, options = {}) {
         const requestIfMissing = options.requestIfMissing !== false;
         const normalized = normalizeOriginPattern(rawUrl);
@@ -179,11 +238,14 @@
         try {
             hasPermission = await containsPermission(pattern);
         } catch (error) {
+            const reason = normalizePermissionErrorReason(error, 'contains_failed');
             return {
                 ok: false,
                 pattern,
-                reason: 'contains_failed',
-                message: '无法检查该域名的权限状态，请稍后重试。'
+                reason,
+                message: reason === 'runtime_unavailable'
+                    ? '扩展上下文已失效，请刷新当前页面后重试。'
+                    : '无法检查该域名的权限状态，请稍后重试。'
             };
         }
 
@@ -212,6 +274,7 @@
             needsPreflightNotice = true;
         }
 
+        let ackPersistPromise = null;
         if (needsPreflightNotice) {
             const confirmed = showPreflightNotice(origin);
             if (!confirmed) {
@@ -222,31 +285,44 @@
                     message: '已取消授权，未保存该 API 配置。'
                 };
             }
-            try {
-                await setPermissionNoticeAckedOrigin(pattern, true);
-            } catch (error) {
+            ackPersistPromise = setPermissionNoticeAckedOrigin(pattern, true).catch((error) => {
                 console.warn('[API Permission] 记录域名说明确认状态失败：', error);
-            }
+            });
         }
 
         let granted = false;
         try {
             granted = await requestPermission(pattern);
         } catch (error) {
+            await waitForAckPersist(ackPersistPromise);
+            const reason = normalizePermissionErrorReason(error, 'request_failed');
             return {
                 ok: false,
                 pattern,
-                reason: 'request_failed',
-                message: '权限申请失败，请稍后重试。'
+                reason,
+                message: reason === 'runtime_unavailable'
+                    ? '扩展上下文已失效，请刷新当前页面后重试。'
+                    : '权限申请失败，请稍后重试。'
             };
         }
 
-        if (!granted) {
+        await waitForAckPersist(ackPersistPromise);
+
+        if (granted === false) {
             return {
                 ok: false,
                 pattern,
                 reason: 'denied',
                 message: '未授予该 API 域名的网络访问权限，无法使用该接口。'
+            };
+        }
+
+        if (granted !== true) {
+            return {
+                ok: false,
+                pattern,
+                reason: 'request_failed',
+                message: '权限申请失败，请稍后重试。'
             };
         }
 

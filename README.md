@@ -7,7 +7,7 @@
 一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
 
 
-![Version](https://img.shields.io/badge/version-1.0.83-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.9-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
 
 [功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
