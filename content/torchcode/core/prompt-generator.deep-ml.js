@@ -41,7 +41,7 @@
         const link = resolvePrimaryLink(data);
         const description = shared.sanitizeDeepMlText(data.description || data.summary) || '未提供';
         const currentCode = shared.sanitizeDeepMlText(data.currentCode || data.starterCode) || '未提供';
-        const notesLiteral = String(data.notes || '').trim();
+        const notesLiteral = String(data.notes || '').trim() || '无';
         const mustIncludeCode = /我的题解.*有什么问题|题解.*有什么问题|代码.*有什么问题/i.test(notesLiteral);
 
         return `## 任务说明
@@ -72,11 +72,15 @@ ${h2} 原题解评价
 
 ${h2} 用户疑问与体会（强制）
 ${h3} 逐条回应我的疑问与体会
-${shared.buildQaOnlyUserNotesBlock(data.notes)}
+用户的原始疑问与体会：
+「${notesLiteral}」
 
-请针对上述原文，使用与完整笔记模式一致的范式回答：
-1. [结论] + [原因] + [具体步骤] + [边界/反例] + [常见误区]
-2. [继续逐条回答，每条都要落到用户原文对应的问题点]
+请针对以上用户的疑问与体会，进行**深度详细**的回应：
+1. **直接回答用户的每一个具体问题**，不要泛泛而谈
+2. **如果用户要求代码，必须提供完整可运行的代码块**，禁止只用文字描述代替
+3. **展开论述每个思路的可行性、优劣势和适用场景**
+4. **结合本题的具体数据特征和约束条件**进行分析
+5. **过程要有条理、分点论述**，而不是一段很长的文字
 [每条答疑不少于 180 字；若用户原文有 N 个疑问，至少输出 N 条答疑，不得合并]
 [“逐条答疑”总字数不少于 520 字；若用户原文为空，也要输出不少于 320 字的问题拆解与建议]
 

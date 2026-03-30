@@ -38,7 +38,7 @@
         const levelGuide = shared.USER_LEVEL_GUIDE[userLevel] || shared.USER_LEVEL_GUIDE['小白'];
         const noteTitle = data.noteTitle || data.taskTitle || 'TorchCode 练习';
         const link = resolvePrimaryLink(data);
-        const notesLiteral = String(data.notes || '').trim();
+        const notesLiteral = String(data.notes || '').trim() || '无';
         const mustIncludeCode = /我的题解.*有什么问题|题解.*有什么问题|代码.*有什么问题/i.test(notesLiteral);
 
         return `你是互联网大厂资深深度学习工程师。当前是“仅答疑”模式：请使用与完整笔记模式一致的“原题解评价 + 用户疑问回应”范式，直接进入问题解答，避免冗长前置章节。
@@ -69,11 +69,15 @@ ${shared.buildHeading(h2, '原题解评价')}
 
 ${shared.buildHeading(h2, '用户疑问与体会（强制）')}
 ${shared.buildHeading(h3, '逐条回应我的疑问与体会')}
-${shared.buildQaOnlyUserNotesBlock(data.notes)}
+用户的原始疑问与体会：
+「${notesLiteral}」
 
-请针对上述原文，使用与完整笔记模式一致的范式回答：
-1. [结论] + [原因] + [具体步骤] + [边界/反例] + [常见误区]
-2. [继续逐条回答，每条都要落到用户原文对应的问题点]
+请针对以上用户的疑问与体会，进行**深度详细**的回应：
+1. **直接回答用户的每一个具体问题**，不要泛泛而谈
+2. **如果用户要求代码，必须提供完整可运行的代码块**，禁止只用文字描述代替
+3. **展开论述每个思路的可行性、优劣势和适用场景**
+4. **结合本题的具体数据特征和约束条件**进行分析
+5. **过程要有条理、分点论述**，而不是一段很长的文字
 [每条答疑不少于 180 字；若用户原文有 N 个疑问，至少输出 N 条答疑，不得合并]
 [“逐条答疑”总字数不少于 520 字；若用户原文为空，也要输出不少于 320 字的问题拆解与建议]
 
