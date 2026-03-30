@@ -37,7 +37,7 @@
             const hasFilter = Boolean(keyword) || statusFilter !== 'all';
             elements.problemsList.innerHTML = `
               <div class="empty-state">
-                ${hasFilter ? '没有找到符合当前筛选条件的题目。提示：仅入库表示已有记录但尚未生成提示词/笔记。' : '这里会显示你保存过笔记或用插件处理过的题目。'}
+                ${hasFilter ? '没有找到符合当前筛选条件的题目' : '这里会显示你保存过笔记或用插件处理过的题目。'}
               </div>
             `;
             elements.problemsPagination.innerHTML = '';

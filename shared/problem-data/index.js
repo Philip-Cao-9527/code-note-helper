@@ -1,6 +1,6 @@
-/**
+﻿/**
  * 刷题记录共享仓库组装入口
- * 版本：1.0.67
+ * 版本：1.0.83
  */
 
 (function () {
@@ -42,15 +42,12 @@
             getSyncSettings: syncCore.getSyncSettings,
             setSyncSettings: syncCore.setSyncSettings,
             getSyncOverview: syncCore.getSyncOverview,
-            isCloudSyncTemporarilyDisabled: syncCore.isCloudSyncTemporarilyDisabled,
             isWebdavConfigComplete: syncCore.isWebdavConfigComplete,
             isAnySyncEnabled: syncCore.isAnySyncEnabled,
             shouldShowSyncIndicator: syncCore.shouldShowSyncIndicator,
             buildWebdavConfigWarning: syncCore.buildWebdavConfigWarning,
-            openBrowserSyncSettings: syncCore.openBrowserSyncSettings,
             exportLocalSnapshot: syncCore.exportLocalSnapshot,
             importLocalSnapshot: syncCore.importLocalSnapshot,
-            runChromeSync: providers.runChromeSync,
             runUnifiedSyncNow: syncCore.runUnifiedSync,
             startAutoSyncScheduler: syncCore.startAutoSyncScheduler,
             stopAutoSyncScheduler: syncCore.stopAutoSyncScheduler,

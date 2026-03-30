@@ -1,6 +1,6 @@
-/**
+﻿/**
  * 刷题记录同步核心
- * 版本：1.0.68
+ * 版本：1.0.83
  */
 
 (function () {
@@ -15,16 +15,12 @@
     const DEFAULT_SYNC_SETTINGS = constants.DEFAULT_SYNC_SETTINGS;
     const DEFAULT_SYNC_TOMBSTONES = constants.DEFAULT_SYNC_TOMBSTONES;
     const UNIFIED_SYNC_DEBOUNCE_MS = 2000;
-    // 依据 v1.0.68 需求：周期自动同步默认每 1 分钟执行一次。
     const UNIFIED_SYNC_INTERVAL_MS = 1 * 60 * 1000;
     const UNIFIED_SYNC_RETRY_MAX_ATTEMPTS = 3;
     const UNIFIED_SYNC_RETRY_DELAY_MS = 2000;
 
-    modules.state = modules.state || {
-        chromeSyncTimer: null,
-        chromeSyncInFlight: false,
-        chromeSyncPendingReason: null
-    };
+    modules.state = modules.state || {};
+    modules.state.localWriteSyncTimer = modules.state.localWriteSyncTimer || null;
     modules.state.unifiedSyncInFlight = Boolean(modules.state.unifiedSyncInFlight);
     modules.state.unifiedSyncPendingReason = modules.state.unifiedSyncPendingReason || null;
     modules.state.unifiedSyncCycleTimer = modules.state.unifiedSyncCycleTimer || null;
@@ -34,34 +30,22 @@
         : new Set();
     modules.providers = modules.providers || {};
 
-    function isCloudSyncTemporarilyDisabled() {
-        return false;
-    }
-
     function normalizeSyncSettings(settings) {
         const webdav = {
             ...helpers.cloneValue(DEFAULT_SYNC_SETTINGS.webdav),
             ...((settings && settings.webdav) || {})
         };
-        const normalizedBaseUrl = helpers.normalizeBaseUrl(webdav.baseUrl);
-        const syncDisabled = isCloudSyncTemporarilyDisabled();
-        const chromeSyncEnabled = syncDisabled
-            ? false
-            : Boolean(settings && settings.chromeSyncEnabled);
-        const webdavEnabled = syncDisabled
-            ? false
-            : Boolean(webdav.enabled);
+
         return {
             ...helpers.cloneValue(DEFAULT_SYNC_SETTINGS),
             ...(settings || {}),
-            chromeSyncEnabled,
             webdav: {
                 ...webdav,
-                enabled: webdavEnabled,
+                enabled: Boolean(webdav.enabled),
                 provider: webdav.provider || 'nutstore',
                 email: String(webdav.email || '').trim(),
                 appPassword: String(webdav.appPassword || '').trim(),
-                baseUrl: normalizedBaseUrl,
+                baseUrl: helpers.normalizeBaseUrl(webdav.baseUrl),
                 remotePath: helpers.sanitizeRemotePath(webdav.remotePath)
             }
         };
@@ -83,12 +67,6 @@
             ...((meta && meta.lastError) || {})
         };
         normalized.lastStatus = {
-            chromeSync: {
-                state: null,
-                message: '',
-                at: null,
-                ...((((meta || {}).lastStatus || {}).chromeSync) || {})
-            },
             webdav: {
                 state: null,
                 message: '',
@@ -106,6 +84,10 @@
             lists: {
                 ...helpers.cloneValue(DEFAULT_SYNC_TOMBSTONES.lists),
                 ...(((tombstones || {}).lists) || {})
+            },
+            records: {
+                ...helpers.cloneValue(DEFAULT_SYNC_TOMBSTONES.records),
+                ...(((tombstones || {}).records) || {})
             }
         };
     }
@@ -135,16 +117,15 @@
 
     function isAnySyncEnabled(settings) {
         const normalized = normalizeSyncSettings(settings);
-        return Boolean(normalized.chromeSyncEnabled || normalized.webdav.enabled);
+        return Boolean(normalized.webdav.enabled);
     }
 
     function shouldShowSyncIndicator(source) {
         if (!source || typeof source !== 'object') return false;
-        const chromeSyncEnabled = Boolean(source.chromeSyncEnabled);
         const webdavEnabled = source.webdav && typeof source.webdav === 'object'
             ? Boolean(source.webdav.enabled)
             : Boolean(source.webdavEnabled);
-        return chromeSyncEnabled || webdavEnabled;
+        return webdavEnabled;
     }
 
     function buildWebdavConfigWarning(settings) {
@@ -224,8 +205,7 @@
             markDirty: true,
             ...(options || {})
         };
-        const payload = { [key]: value };
-        return writeLocalMultiple(payload, config);
+        return writeLocalMultiple({ [key]: value }, config);
     }
 
     async function writeLocalMultiple(data, options) {
@@ -234,32 +214,32 @@
             markDirty: true,
             ...(options || {})
         };
-        const payload = { ...(data || {}) };
-        const meta = await getSyncMeta();
+        const payload = {
+            ...(data || {})
+        };
 
         if (config.markDirty) {
-            meta.localRevision += 1;
+            const meta = await getSyncMeta();
+            meta.localRevision = Number(meta.localRevision || 0) + 1;
             meta.lastLocalWriteAt = new Date().toISOString();
+            payload[STORAGE_KEYS.syncMeta] = meta;
         }
 
-        payload[STORAGE_KEYS.syncMeta] = meta;
         await helpers.writeLocalMultiple(payload);
 
         if (config.autoSync) {
-            scheduleAutoChromeSync('local-write');
+            scheduleDebouncedUnifiedSync('local-write');
         }
-
-        return payload;
     }
 
     async function getTimelineEnabled() {
-        const value = await helpers.readLocal('timeline_enabled', true);
-        return value !== false;
+        const enabled = await helpers.readLocal('note_helper_timeline_enabled_v1', true);
+        return enabled !== false;
     }
 
     async function setTimelineEnabled(enabled) {
-        await helpers.writeLocal('timeline_enabled', enabled !== false);
-        return enabled !== false;
+        await helpers.writeLocal('note_helper_timeline_enabled_v1', Boolean(enabled));
+        return Boolean(enabled);
     }
 
     function addSyncListener(listener) {
@@ -273,18 +253,14 @@
     }
 
     function removeSyncListener(listener) {
-        if (typeof listener !== 'function') return;
         modules.state.syncListeners.delete(listener);
     }
 
     function notifySyncListeners(event) {
-        const payload = {
-            at: new Date().toISOString(),
-            ...(event || {})
-        };
+        if (!modules.state.syncListeners || !(modules.state.syncListeners instanceof Set)) return;
         modules.state.syncListeners.forEach((listener) => {
             try {
-                listener(payload);
+                listener(event || {});
             } catch (error) {
                 console.error('[ProblemData] 同步监听器执行失败：', error);
             }
@@ -293,36 +269,34 @@
 
     function sleep(ms) {
         return new Promise((resolve) => {
-            setTimeout(resolve, ms);
+            setTimeout(resolve, Number(ms) > 0 ? Number(ms) : 0);
         });
     }
 
     function normalizeProviderError(provider, error) {
-        const providerError = error instanceof Error
-            ? error
-            : new Error(String(error || '同步失败'));
-        if (!providerError.provider) {
-            providerError.provider = provider;
+        const normalized = error instanceof Error ? error : new Error(String(error || '同步失败'));
+        if (!normalized.provider) {
+            normalized.provider = provider;
         }
-        if (!providerError.errorType) {
-            providerError.errorType = 'provider-error';
+        if (!normalized.errorType && error && error.errorType) {
+            normalized.errorType = error.errorType;
         }
-        return providerError;
+        if (typeof normalized.status !== 'number' && error && typeof error.status === 'number') {
+            normalized.status = error.status;
+        }
+        return normalized;
     }
 
     function shouldRetryUnifiedError(error) {
         if (!error) return false;
+
         const nonRetryableErrorTypes = new Set([
             'config-incomplete',
-            'provider-missing',
-            'sync-api-unavailable',
-            'payload-too-large',
-            'payload-parse-failed',
-            'config',
-            'remote-not-found',
-            'invalid-json'
+            'auth',
+            'validation',
+            'provider-missing'
         ]);
-        const errorType = String(error.errorType || '').trim();
+        const errorType = String(error.errorType || '').toLowerCase();
         if (errorType && nonRetryableErrorTypes.has(errorType)) {
             return false;
         }
@@ -358,7 +332,7 @@
                     status: 'syncing',
                     reason: context.reason,
                     source: context.source,
-                    message: `${provider === 'webdav' ? '坚果云' : 'Cloud Sync'} 临时失败，正在重试（${attempt}/${UNIFIED_SYNC_RETRY_MAX_ATTEMPTS - 1}）`
+                    message: '坚果云临时失败，正在重试（' + attempt + '/' + (UNIFIED_SYNC_RETRY_MAX_ATTEMPTS - 1) + '）'
                 });
                 await sleep(UNIFIED_SYNC_RETRY_DELAY_MS * attempt);
             }
@@ -375,7 +349,7 @@
         setTimeout(() => {
             runUnifiedSync({
                 silent: true,
-                reason: `queued:${nextReason}`,
+                reason: 'queued:' + nextReason,
                 source: 'queue'
             }).catch((error) => {
                 console.warn('[ProblemData] 排队同步失败：', error);
@@ -391,10 +365,9 @@
             ...(options || {})
         };
         const settings = await getSyncSettings();
-        const chromeSyncEnabled = Boolean(settings.chromeSyncEnabled);
         const webdavEnabled = Boolean(settings.webdav.enabled);
 
-        if (!chromeSyncEnabled && !webdavEnabled) {
+        if (!webdavEnabled) {
             notifySyncListeners({
                 status: 'idle',
                 reason: config.reason,
@@ -429,10 +402,6 @@
             reason: config.reason,
             source: config.source,
             providers: {
-                chromeSync: {
-                    enabled: chromeSyncEnabled,
-                    synced: false
-                },
                 webdav: {
                     enabled: webdavEnabled,
                     synced: false,
@@ -442,62 +411,35 @@
         };
 
         try {
-            if (chromeSyncEnabled) {
-                const chromeResult = await runProviderWithRetry('chromeSync', async () => {
-                    if (!modules.providers || typeof modules.providers.runChromeSync !== 'function') {
-                        const providerError = new Error('Cloud Sync 提供方未加载');
-                        providerError.provider = 'chromeSync';
-                        providerError.errorType = 'provider-missing';
-                        throw providerError;
-                    }
-
-                    const response = await modules.providers.runChromeSync({
-                        silent: true,
-                        reason: `unified:${config.reason}`
-                    });
-                    if (response && response.error) {
-                        const providerError = new Error(response.error);
-                        providerError.provider = 'chromeSync';
-                        providerError.errorType = 'provider-error';
-                        throw providerError;
-                    }
-                    return response || null;
-                }, config);
-                result.providers.chromeSync.synced = true;
-                result.providers.chromeSync.result = chromeResult;
+            const warningMessage = buildWebdavConfigWarning(settings);
+            if (warningMessage) {
+                result.warning = true;
+                result.providers.webdav.skipped = true;
+                const warningError = new Error(warningMessage);
+                warningError.errorType = 'config-incomplete';
+                await markSyncError('webdav', warningError, warningMessage);
+                notifySyncListeners({
+                    status: 'warning',
+                    reason: config.reason,
+                    source: config.source,
+                    message: warningMessage
+                });
+                return result;
             }
 
-            if (webdavEnabled) {
-                const warningMessage = buildWebdavConfigWarning(settings);
-                if (warningMessage) {
-                    result.warning = true;
-                    result.providers.webdav.skipped = true;
-                    const warningError = new Error(warningMessage);
-                    warningError.errorType = 'config-incomplete';
-                    await markSyncError('webdav', warningError, warningMessage);
-                    notifySyncListeners({
-                        status: 'warning',
-                        reason: config.reason,
-                        source: config.source,
-                        message: warningMessage
-                    });
-                    return result;
+            const webdavResult = await runProviderWithRetry('webdav', async () => {
+                if (!modules.providers ||
+                    !modules.providers.webdav ||
+                    typeof modules.providers.webdav.backupToNutstore !== 'function') {
+                    const providerError = new Error('坚果云同步提供方未加载');
+                    providerError.provider = 'webdav';
+                    providerError.errorType = 'provider-missing';
+                    throw providerError;
                 }
-
-                const webdavResult = await runProviderWithRetry('webdav', async () => {
-                    if (!modules.providers ||
-                        !modules.providers.webdav ||
-                        typeof modules.providers.webdav.backupToNutstore !== 'function') {
-                        const providerError = new Error('坚果云同步提供方未加载');
-                        providerError.provider = 'webdav';
-                        providerError.errorType = 'provider-missing';
-                        throw providerError;
-                    }
-                    return modules.providers.webdav.backupToNutstore();
-                }, config);
-                result.providers.webdav.synced = true;
-                result.providers.webdav.result = webdavResult || null;
-            }
+                return modules.providers.webdav.backupToNutstore();
+            }, config);
+            result.providers.webdav.synced = true;
+            result.providers.webdav.result = webdavResult || null;
 
             notifySyncListeners({
                 status: 'success',
@@ -507,11 +449,7 @@
             });
             return result;
         } catch (error) {
-            if (error && error.provider === 'webdav') {
-                await markSyncError('webdav', error, '坚果云同步失败');
-            } else if (error && error.provider === 'chromeSync') {
-                await markSyncError('chromeSync', error, 'Cloud Sync 同步失败');
-            }
+            await markSyncError('webdav', error, '坚果云同步失败');
 
             notifySyncListeners({
                 status: 'error',
@@ -588,12 +526,12 @@
         const settings = await getSyncSettings();
         if (!isAnySyncEnabled(settings)) return;
 
-        if (modules.state.chromeSyncTimer) {
-            clearTimeout(modules.state.chromeSyncTimer);
+        if (modules.state.localWriteSyncTimer) {
+            clearTimeout(modules.state.localWriteSyncTimer);
         }
 
-        modules.state.chromeSyncTimer = setTimeout(() => {
-            modules.state.chromeSyncTimer = null;
+        modules.state.localWriteSyncTimer = setTimeout(() => {
+            modules.state.localWriteSyncTimer = null;
             runUnifiedSync({
                 silent: true,
                 reason: reason || 'auto',
@@ -602,13 +540,6 @@
                 console.error('[ProblemData] 防抖自动同步失败：', error);
             });
         }, Number(config.delayMs) > 0 ? Number(config.delayMs) : UNIFIED_SYNC_DEBOUNCE_MS);
-    }
-
-    async function scheduleAutoChromeSync(reason) {
-        return scheduleDebouncedUnifiedSync(reason || 'local-write', {
-            delayMs: UNIFIED_SYNC_DEBOUNCE_MS,
-            source: 'local-write'
-        });
     }
 
     async function getLocalDataBundle() {
@@ -677,6 +608,19 @@
         return localRecord;
     }
 
+    function resolveRecordWithTombstone(localRecord, incomingRecord, tombstoneAt) {
+        const mergedRecord = pickLaterRecord(localRecord, incomingRecord);
+        if (!mergedRecord) return null;
+
+        const mergedUpdated = new Date(mergedRecord.updatedAt || 0).getTime();
+        const tombstoneUpdated = new Date(tombstoneAt || 0).getTime();
+        if (tombstoneUpdated >= mergedUpdated) {
+            return null;
+        }
+
+        return mergedRecord;
+    }
+
     function mergeListMaps(localLists, incomingLists, tombstones) {
         const nextLists = { ...(localLists || {}) };
         Object.entries(incomingLists || {}).forEach(([listId, incomingList]) => {
@@ -729,21 +673,45 @@
         const localLists = await helpers.readLocal(STORAGE_KEYS.problemLists, {});
         const localTombstones = await getSyncTombstones();
 
-        const nextRecords = { ...(localRecords || {}) };
-        Object.entries(incoming.records || {}).forEach(([recordId, incomingRecord]) => {
-            nextRecords[recordId] = pickLaterRecord(nextRecords[recordId], incomingRecord);
-        });
-
         const incomingTombstones = normalizeTombstones(incoming.tombstones);
         const nextTombstones = normalizeTombstones({
             lists: {
                 ...(localTombstones.lists || {})
+            },
+            records: {
+                ...(localTombstones.records || {})
             }
         });
         Object.entries(incomingTombstones.lists || {}).forEach(([listId, deletedAt]) => {
             const localDeletedAt = nextTombstones.lists[listId];
             if (new Date(deletedAt || 0).getTime() >= new Date(localDeletedAt || 0).getTime()) {
                 nextTombstones.lists[listId] = deletedAt;
+            }
+        });
+        Object.entries(incomingTombstones.records || {}).forEach(([recordId, deletedAt]) => {
+            const localDeletedAt = nextTombstones.records[recordId];
+            if (new Date(deletedAt || 0).getTime() >= new Date(localDeletedAt || 0).getTime()) {
+                nextTombstones.records[recordId] = deletedAt;
+            }
+        });
+
+        const nextRecords = {};
+        const incomingRecords = incoming.records || {};
+        const recordIds = new Set([
+            ...Object.keys(localRecords || {}),
+            ...Object.keys(incomingRecords || {})
+        ]);
+        recordIds.forEach((recordId) => {
+            const mergedRecord = resolveRecordWithTombstone(
+                (localRecords || {})[recordId],
+                incomingRecords[recordId],
+                nextTombstones.records[recordId]
+            );
+            if (!mergedRecord) return;
+            nextRecords[recordId] = mergedRecord;
+            const tombstoneAt = nextTombstones.records[recordId];
+            if (new Date(tombstoneAt || 0).getTime() < new Date(mergedRecord.updatedAt || 0).getTime()) {
+                delete nextTombstones.records[recordId];
             }
         });
 
@@ -779,49 +747,15 @@
         const meta = await getSyncMeta();
         const settings = await getSyncSettings();
         const timelineEnabled = await getTimelineEnabled();
-        const browserSyncInfo = typeof helpers.getBrowserSyncInfo === 'function'
-            ? helpers.getBrowserSyncInfo()
-            : {
-                browserName: 'Google Chrome',
-                settingsUrl: 'chrome://settings/syncSetup'
-            };
-
-        const syncProbe = typeof helpers.probeSyncStorageAvailability === 'function'
-            ? await helpers.probeSyncStorageAvailability()
-            : {
-                available: Boolean(helpers.getSyncStorageApi()),
-                reason: 'fallback',
-                message: ''
-            };
-
-        const syncDisabled = isCloudSyncTemporarilyDisabled();
         const webdavConfigComplete = isWebdavConfigComplete(settings);
         const webdavConfigWarning = buildWebdavConfigWarning(settings);
-        const chromeSyncHint = syncDisabled
-            ? '云同步功能已在当前版本临时禁用。'
-            : !syncProbe.available
-            ? '当前环境暂不支持 Cloud Sync。'
-            : settings.chromeSyncEnabled
-                ? '已启用 Cloud Sync，请确保浏览器已登录并开启同步。'
-                : '尚未启用 Cloud Sync，开启后可同步轻量状态。';
 
         return {
-            cloudSyncTemporarilyDisabled: syncDisabled,
             localLabel: '当前浏览器',
             localRevision: meta.localRevision,
             lastLocalWriteAt: meta.lastLocalWriteAt,
             timelineEnabled,
             anySyncEnabled: isAnySyncEnabled(settings),
-            chromeSyncEnabled: settings.chromeSyncEnabled,
-            chromeSyncStorageReady: Boolean(syncProbe.available),
-            chromeSyncProbeReason: syncProbe.reason,
-            chromeSyncProbeMessage: syncProbe.message,
-            chromeSyncHint,
-            chromeSyncBrowserName: browserSyncInfo.browserName,
-            chromeSyncSettingsUrl: browserSyncInfo.settingsUrl,
-            chromeSyncLastSyncAt: meta.lastSyncAt.chromeSync,
-            chromeSyncLastError: meta.lastError.chromeSync,
-            chromeSyncLastStatus: meta.lastStatus.chromeSync,
             webdavEnabled: settings.webdav.enabled,
             webdavConfigComplete,
             webdavConfigWarning,
@@ -831,17 +765,9 @@
             webdavLastError: meta.lastError.webdav,
             webdavLastStatus: meta.lastStatus.webdav,
             syncIndicatorVisible: shouldShowSyncIndicator({
-                chromeSyncEnabled: settings.chromeSyncEnabled,
                 webdavEnabled: settings.webdav.enabled
             })
         };
-    }
-
-    async function openBrowserSyncSettings() {
-        if (typeof helpers.openBrowserSyncSettings !== 'function') {
-            throw new Error('当前环境无法打开浏览器同步设置');
-        }
-        return helpers.openBrowserSyncSettings();
     }
 
     modules.syncCore = {
@@ -858,7 +784,6 @@
         markSyncError,
         writeLocalNamespace,
         writeLocalMultiple,
-        isCloudSyncTemporarilyDisabled,
         isWebdavConfigComplete,
         isAnySyncEnabled,
         shouldShowSyncIndicator,
@@ -871,14 +796,12 @@
         startAutoSyncScheduler,
         stopAutoSyncScheduler,
         scheduleDebouncedUnifiedSync,
-        scheduleAutoChromeSync,
         getLocalDataBundle,
         sanitizeSettingsForExport,
         buildFullSnapshot,
         exportLocalSnapshot,
         mergeSnapshotToLocal,
         importLocalSnapshot,
-        getSyncOverview,
-        openBrowserSyncSettings
+        getSyncOverview
     };
 })();

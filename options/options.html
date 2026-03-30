@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -12,7 +12,7 @@
     <div class="container">
         <header class="page-header">
             <div class="page-title">高级设置</div>
-            <div class="page-subtitle">这里可以统一管理 AI 时间轴、本地导入导出以及 API 配置。</div>
+            <div class="page-subtitle">这里可以统一管理 AI 时间轴、本地导入导出、坚果云备份与 API 配置。</div>
         </header>
 
         <section class="card">
@@ -20,7 +20,7 @@
             <div class="switch-row">
                 <div class="switch-copy">
                     <div class="switch-title">AI 时间轴</div>
-                    <div class="switch-desc">关闭后，ChatGPT、Gemini、Claude 等页面将不再显示时间轴。</div>
+                    <div class="switch-desc">关闭后，ChatGPT、Gemini、Claude 页面将不再显示时间轴。</div>
                 </div>
                 <label class="switch">
                     <input type="checkbox" id="timeline-toggle">
@@ -31,13 +31,13 @@
 
         <section class="card">
             <div class="card-title">数据与同步</div>
-            <div class="card-note">本地数据始终优先写入当前浏览器。你也可以导出或导入 JSON。</div>
+            <div class="card-note">所有数据默认保存在当前浏览器。你可以导出 JSON，也可以使用坚果云进行完整备份。</div>
 
             <div class="section-grid">
                 <div class="summary-item">
                     <div class="summary-label">本地数据位置</div>
                     <div class="summary-value" id="local-label">当前浏览器</div>
-                    <div class="summary-note">可以通过导出 JSON 获得可见备份文件。</div>
+                    <div class="summary-note">可通过导出 JSON 获得可见备份文件。</div>
                 </div>
                 <div class="summary-item">
                     <div class="summary-label">本地修订号</div>
@@ -52,54 +52,10 @@
                 <input type="file" id="import-json-file" accept=".json,application/json">
             </div>
 
-            <div id="cloud-sync-section">
-            <div class="switch-row" style="margin-top: 18px;">
-                <div class="switch-copy">
-                    <div class="switch-title">Cloud Sync</div>
-                    <div class="switch-desc">基于浏览器自带的同步服务进行轻量同步。请先在浏览器中登录账号并开启同步。</div>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="chrome-sync-toggle">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="actions-row" style="margin-top: 12px;">
-                <button class="btn btn-secondary" id="btn-open-browser-sync">打开浏览器同步设置</button>
-                <button class="btn btn-secondary" id="btn-run-chrome-sync">立即同步</button>
-            </div>
-
-            <div class="status-box" style="margin-top: 14px;">
-                <div class="status-row">
-                    <span>同步方式</span>
-                    <strong id="chrome-sync-browser">浏览器同步</strong>
-                </div>
-                <div class="status-row">
-                    <span>同步提示</span>
-                    <strong id="chrome-sync-hint">暂无</strong>
-                </div>
-                <div class="status-row">
-                    <span>同步设置页</span>
-                    <strong id="chrome-sync-settings-url">暂无</strong>
-                </div>
-                <div class="status-row">
-                    <span>最近同步</span>
-                    <strong id="chrome-sync-last-at">暂无</strong>
-                </div>
-                <div class="status-row">
-                    <span>最近状态</span>
-                    <strong id="chrome-sync-last-status">暂无</strong>
-                </div>
-                <div class="status-row">
-                    <span>最近错误</span>
-                    <strong id="chrome-sync-last-error">暂无</strong>
-                </div>
-            </div>
-
             <div class="switch-row" style="margin-top: 18px;">
                 <div class="switch-copy">
                     <div class="switch-title">坚果云完整备份</div>
-                    <div class="switch-desc">用于完整备份题目正文和题单数据。默认写入固定远端目录，不建议写到 WebDAV 根目录。</div>
+                    <div class="switch-desc">用于完整备份题目正文与题单数据。默认写入固定远端目录，避免根目录覆盖风险。</div>
                 </div>
                 <label class="switch">
                     <input type="checkbox" id="webdav-toggle">
@@ -120,7 +76,7 @@
                     <div class="form-group full">
                         <label for="webdav-remote-path">远端文件路径</label>
                         <input type="text" id="webdav-remote-path" placeholder="CodeNote-Helper/backups/full-backup.json">
-                        <div class="form-hint">默认路径是 `CodeNote-Helper/backups/full-backup.json`；如果只填写文件名，会自动保存到固定目录下。</div>
+                        <div class="form-hint">默认路径是 <code>CodeNote-Helper/backups/full-backup.json</code>；若只填文件名，会自动保存到固定目录。</div>
                     </div>
                 </div>
 
@@ -140,7 +96,7 @@
                         <strong id="webdav-remote-label">暂无</strong>
                     </div>
                     <div class="status-row">
-                        <span>最近备份/恢复</span>
+                        <span>最近备份 / 恢复</span>
                         <strong id="webdav-last-at">暂无</strong>
                     </div>
                     <div class="status-row">
@@ -154,18 +110,15 @@
                 </div>
             </div>
 
-            <!-- 未保存提示 + 保存按钮：始终在同步区域最底部 -->
             <div class="sync-dirty-hint" id="sync-dirty-hint" style="display: none;">同步设置已修改，请点击下方按钮保存。</div>
             <div class="actions-row" style="margin-top: 12px;">
                 <button class="btn btn-primary" id="btn-save-sync">保存同步设置</button>
             </div>
-            </div>
-
         </section>
 
         <section class="card">
             <div class="card-title">API 配置</div>
-            <div class="card-note">用于配置大语言模型 API 参数，直接通过AI直接生成笔记。修改后需点击“保存 API 配置”才会生效。</div>
+            <div class="card-note">用于配置大语言模型 API 参数，支持在页面中直接生成笔记。修改后需点击“保存 API 配置”。</div>
 
             <div class="form-grid">
                 <div class="form-group full">
@@ -187,10 +140,11 @@
                 <button class="btn btn-secondary" id="btn-reset-api">恢复默认</button>
                 <button class="btn btn-primary" id="btn-save-api">保存 API 配置</button>
             </div>
+
             <div class="switch-row" style="margin-top: 14px;">
                 <div class="switch-copy">
                     <div class="switch-title">保存覆盖前提醒</div>
-                    <div class="switch-desc">开启后，保存到本地记录时若已存在笔记会弹出确认。</div>
+                    <div class="switch-desc">开启后，保存到本地记录时若已有笔记会先弹出确认。</div>
                 </div>
                 <label class="switch">
                     <input type="checkbox" id="overwrite-confirm-toggle">
@@ -198,7 +152,7 @@
                 </label>
             </div>
             <div class="sync-dirty-hint" id="api-dirty-hint" style="display: none; margin-top: 12px;">
-                API 配置已修改，请先点击“保存 API 配置”。未保存直接离开页面会持续弹出浏览器确认提醒。
+                API 配置已修改，请先点击“保存 API 配置”。未保存直接离开页面会触发浏览器确认提醒。
             </div>
         </section>
     </div>
@@ -214,7 +168,6 @@
     <script src="../shared/problem-data/records.js"></script>
     <script src="../shared/problem-data/importers/hot100.js"></script>
     <script src="../shared/problem-data/lists.js"></script>
-    <script src="../shared/problem-data/providers/chrome-sync.js"></script>
     <script src="../shared/problem-data/providers/nutstore-webdav.js"></script>
     <script src="../shared/problem-data/index.js"></script>
     <script src="../shared/problem-data.js"></script>

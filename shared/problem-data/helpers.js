@@ -227,26 +227,6 @@
         return buildNutstorePathInfo(remotePath, baseUrl).remoteUrl;
     }
 
-    function getBrowserSyncInfo() {
-        const userAgent = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-        const isEdge = /Edg\//.test(userAgent);
-        return {
-            browserName: isEdge ? 'Microsoft Edge' : 'Google Chrome',
-            settingsUrl: isEdge ? 'edge://settings/profiles/sync' : 'chrome://settings/syncSetup'
-        };
-    }
-
-    async function openBrowserSyncSettings() {
-        const browserSyncInfo = getBrowserSyncInfo();
-        if (typeof chrome === 'undefined' || !chrome.tabs || typeof chrome.tabs.create !== 'function') {
-            throw new Error('当前环境无法打开浏览器同步设置');
-        }
-        await chrome.tabs.create({
-            url: browserSyncInfo.settingsUrl,
-            active: true
-        });
-        return browserSyncInfo;
-    }
 
     function getLocalStorageApi() {
         if (window.Storage &&
@@ -312,32 +292,6 @@
             hasWarnedSyncStorageUnavailable = true;
         }
         return null;
-    }
-
-    async function probeSyncStorageAvailability() {
-        const api = getSyncStorageApi();
-        if (!api) {
-            return {
-                available: false,
-                reason: 'sync-api-unavailable',
-                message: '当前环境不支持浏览器同步存储'
-            };
-        }
-
-        try {
-            await api.get(STORAGE_KEYS.chromeSyncManifest || '__sync_probe__', null);
-            return {
-                available: true,
-                reason: 'ok',
-                message: '同步存储可用'
-            };
-        } catch (error) {
-            return {
-                available: false,
-                reason: 'sync-api-error',
-                message: error && error.message ? error.message : '同步存储访问失败'
-            };
-        }
     }
 
     async function readLocal(key, defaultValue) {
@@ -432,11 +386,8 @@
         buildNutstoreUrlFromSegments,
         buildNutstorePathInfo,
         buildNutstoreUrl,
-        getBrowserSyncInfo,
-        openBrowserSyncSettings,
         getLocalStorageApi,
         getSyncStorageApi,
-        probeSyncStorageAvailability,
         readLocal,
         writeLocal,
         writeLocalMultiple,

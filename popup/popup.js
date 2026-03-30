@@ -108,18 +108,12 @@
             if (typeof store.shouldShowSyncIndicator === 'function') {
                 return !store.shouldShowSyncIndicator(syncOverview);
             }
-            return !(syncOverview.chromeSyncEnabled || syncOverview.webdavEnabled);
+            return !syncOverview.webdavEnabled;
         }
 
         function buildIdleTitle(syncOverview) {
             const suffix = '（状态提示，真实同步按自动周期或点击触发）';
             if (!syncOverview) return '同步已关闭';
-            if (syncOverview.chromeSyncEnabled && syncOverview.webdavEnabled) {
-                return `Cloud Sync 与坚果云已启用，点击立即同步${suffix}`;
-            }
-            if (syncOverview.chromeSyncEnabled) {
-                return `Cloud Sync 已启用，点击立即同步${suffix}`;
-            }
             if (syncOverview.webdavEnabled) {
                 return `坚果云已启用，点击立即同步${suffix}`;
             }
@@ -220,7 +214,7 @@
         }
 
         async function syncAutoScheduler() {
-            const shouldStart = Boolean(state.syncOverview && (state.syncOverview.chromeSyncEnabled || state.syncOverview.webdavEnabled));
+            const shouldStart = Boolean(state.syncOverview && state.syncOverview.webdavEnabled);
             if (!shouldStart && schedulerStarted) {
                 if (typeof store.stopAutoSyncScheduler === 'function') {
                     store.stopAutoSyncScheduler();

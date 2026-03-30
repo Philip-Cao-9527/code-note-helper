@@ -7,7 +7,7 @@
 一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
 
 
-![Version](https://img.shields.io/badge/version-1.0.81-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.83-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
 
 [功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
@@ -191,7 +191,8 @@
 <a id="sync-backup" name="sync-backup"></a>
 ## ☁️ 同步与备份说明
 
-所有数据默认保存在浏览器本地，不联网也能正常使用。如果需要在多设备间同步，我们在**扩展设置页**（点击插件图标打开 Popup → 设置与同步）提供了以下选项：
+所有数据默认保存在浏览器本地，不联网也能正常使用。如果需要多设备同步与恢复，在**扩展设置页**（点击插件图标打开 Popup → 设置与备份）可使用以下方案。
+
 
 ### 🥇 推荐方案：坚果云 WebDAV (完整备份)
 这是最稳定、安全的完整备份方案，会将所有数据（记录、题单、笔记）打包上传到你的坚果云空间，没有容量限制。
@@ -202,10 +203,6 @@
 
 ### 🥈 备选方案：本地 JSON 导出
 最简单的物理备份方式。手动导出一份 JSON 文件保存到本地，随时可以导入恢复。适合不想折腾云服务、偶尔手动备份的用户。
-
-### 🚫 关于 Cloud Sync 的说明
-**支持轻量备份，容量大概在150题左右，现阶段该功能存在bug**，强烈建议优先使用坚果云进行备份。
-
 ---
 
 <a id="api-config" name="api-config"></a>

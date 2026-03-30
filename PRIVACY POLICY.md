@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: March 13, 2026
+Last updated: March 30, 2026
 
 ## 1. Overview
 
@@ -29,19 +29,13 @@ If you configure an LLM API and use direct generation, the prompt you generate i
 
 The extension does not proxy this data through any developer server.
 
-### B. Chrome Sync
-
-If you manually enable browser sync, lightweight metadata may be synchronized by your own browser sync service, such as Chrome Sync or Edge Sync.
-
-This is limited on purpose. Full note bodies are not uploaded through this lightweight sync path.
-
-### C. Nutstore / WebDAV backup
+### B. Nutstore / WebDAV backup
 
 If you manually enable Nutstore backup or restore, the extension sends backup data directly to the WebDAV space that belongs to you.
 
 The developer does not receive a copy of this data.
 
-### D. JSON export / import
+### C. JSON export / import
 
 If you export a JSON backup, the file is written to a location that you choose through your browser download flow.
 
@@ -74,7 +68,6 @@ You can:
 - Keep everything local and never enable sync
 - Export your local data as JSON
 - Import your own backup JSON
-- Disable Chrome Sync at any time
 - Disable Nutstore backup at any time
 - Remove the extension to stop future data processing on supported pages
 

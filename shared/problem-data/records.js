@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录模块
- * 版本：1.0.80
+ * 版本：1.0.82
  */
 
 (function () {
@@ -371,6 +371,7 @@
 
         const records = await getProblemRecords();
         const problemLists = await helpers.readLocal(STORAGE_KEYS.problemLists, {});
+        const tombstones = await syncCore.getSyncTombstones();
         const beforeCompletedCanonicalSet = buildCompletedCanonicalSet(records);
         const now = new Date().toISOString();
         const recordId = buildRecordId(identity);
@@ -411,6 +412,9 @@
         }
 
         records[recordId] = nextRecord;
+        if (tombstones.records[recordId]) {
+            delete tombstones.records[recordId];
+        }
         const afterCompletedCanonicalSet = buildCompletedCanonicalSet(records);
         const newlyCompletedLists = collectNewlyCompletedLists(
             problemLists,
@@ -418,7 +422,10 @@
             afterCompletedCanonicalSet
         );
 
-        await syncCore.writeLocalNamespace(STORAGE_KEYS.problemRecords, records, {
+        await syncCore.writeLocalMultiple({
+            [STORAGE_KEYS.problemRecords]: records,
+            [STORAGE_KEYS.syncTombstones]: tombstones
+        }, {
             autoSync: true,
             markDirty: true
         });
@@ -453,8 +460,14 @@
             };
         }
 
+        const tombstones = await syncCore.getSyncTombstones();
+        const deletedAt = new Date().toISOString();
         delete records[recordId];
-        await syncCore.writeLocalNamespace(STORAGE_KEYS.problemRecords, records, {
+        tombstones.records[recordId] = deletedAt;
+        await syncCore.writeLocalMultiple({
+            [STORAGE_KEYS.problemRecords]: records,
+            [STORAGE_KEYS.syncTombstones]: tombstones
+        }, {
             autoSync: true,
             markDirty: true
         });
@@ -463,6 +476,7 @@
             success: true,
             deleted: true,
             recordId,
+            deletedAt,
             total: Object.keys(records).length
         };
     }

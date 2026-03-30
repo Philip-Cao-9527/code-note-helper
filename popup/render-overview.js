@@ -44,7 +44,7 @@
         }).join('');
 
         if (elements.footerNote) {
-            elements.footerNote.innerHTML = '在 <span class="footer-note-key">设置与同步</span> 中管理同步和 API 配置';
+            elements.footerNote.innerHTML = '在 <span class="footer-note-key">设置与备份</span> 中管理备份和 API 配置';
         }
     }
 
