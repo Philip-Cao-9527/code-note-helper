@@ -211,7 +211,7 @@
 <a id="api-config" name="api-config"></a>
 ## ⚙️ API 配置
 
-如果你想在页面内直接生成笔记（直连 API 模式），需要在设置页填写 API 信息。扩展支持所有兼容 OpenAI 接口格式的 API（如 DeepSeek、Moonshot、各类中转站等）。
+如果你想在页面内直接生成笔记（直连 API 模式），需要在设置页填写 API 信息。扩展支持所有兼容 OpenAI 接口格式的 API（如 DeepSeek、qwen、各类中转站等）。
 
 ### 参考配置（以ChatAnyWhere 中转站为例）
 
@@ -224,7 +224,7 @@
 | API Key | 你的专属 Key（`sk-...`） |
 
 > **常见防坑指南**：
-> - **API 返回 404 / Invalid URL**：请确保 Base URL 以 `/v1` 结尾。
+> - **API 返回 404 / Invalid URL**：请确保 Base URL填写正确。
 >   - ✅ 正确：`https://api.openai.com/v1`。
 >   - ❌ 错误：`https://api.openai.com/v1/chat/completions`（插件会自动拼接后缀，请勿手动写全）。
 
