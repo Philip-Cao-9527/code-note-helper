@@ -1,6 +1,6 @@
 ﻿/**
  * 后台 Service Worker
- * 版本：1.0.9
+ * 版本：1.0.90
  */
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
