@@ -41,6 +41,12 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Checkout target tag
+        shell: bash
+        run: |
+          git fetch --force --tags
+          git checkout "${{ steps.tag.outputs.tag }}"
+
       - name: Validate manifest version
         shell: bash
         run: |
@@ -66,11 +72,20 @@ jobs:
             exit 1
           fi
 
+      - name: Build release zip
+        shell: bash
+        run: |
+          git archive --format=zip --output=code-note-helper.zip "${{ steps.tag.outputs.tag }}"
+          ls -lh code-note-helper.zip
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
           body_path: RELEASE_NOTES.md
+          files: |
+            code-note-helper.zip
+          overwrite_files: true
           draft: false
           prerelease: false
