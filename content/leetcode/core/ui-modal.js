@@ -1,6 +1,6 @@
 ﻿/**
  * LeetCode 笔记助手 UI 模块
- * 版本：1.0.81
+ * 版本：1.0.90
  */
 
 (function () {
@@ -382,6 +382,17 @@
         }
     }
 
+    async function getExistingProblemRecordForCurrentUrl() {
+        const store = getProblemDataStore();
+        if (!store || typeof store.getProblemRecordByUrl !== 'function') return null;
+        try {
+            return await store.getProblemRecordByUrl(window.location.href);
+        } catch (error) {
+            console.warn('[Note Helper] 查询题目记录失败，将继续按提交流程处理:', error);
+            return null;
+        }
+    }
+
     function getSubmissionIdentity() {
         const identity = getProblemIdentity(window.location.pathname);
         if (!identity || !identity.submissionId) return null;
@@ -586,6 +597,16 @@
 
         trackingSubmissionInFlight.add(trackKey);
         try {
+            const existingRecord = await getExistingProblemRecordForCurrentUrl();
+            if (existingRecord) {
+                clearSubmitIntent(intentState.intentKey);
+                console.info('[Note Helper] 检测到题目已有记录，跳过提交通过自动入库:', {
+                    trackKey,
+                    problemId: existingRecord.id
+                });
+                return false;
+            }
+
             const actionResult = await trackCurrentProblemAction('submission_passed', {
                 title: extractSubmissionProblemTitle(identity.slug),
                 submissionId: identity.submissionId,

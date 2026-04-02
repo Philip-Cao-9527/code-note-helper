@@ -1,6 +1,6 @@
 /**
  * Markdown renderer
- * Version: 1.0.66
+ * Version: 1.0.90
  */
 
 (function () {
@@ -82,7 +82,6 @@
             .replace(/^\s*[-*]\s+(.*)$/gm, (_, t) => `<li>${escapeHtml(t)}</li>`)
             .replace(/\*\*(.+?)\*\*/g, (_, t) => `<strong>${escapeHtml(t)}</strong>`)
             .replace(/\*(.+?)\*/g, (_, t) => `<em>${escapeHtml(t)}</em>`)
-            .replace(/==([^=\n][^=\n]*?)==/g, (_, t) => `<mark>${escapeHtml(t)}</mark>`)
             .replace(/\[(.+?)\]\((.+?)\)/g, (_, text, url) => `<a href="${escapeHtml(url)}" target="_blank">${escapeHtml(text)}</a>`);
 
         const lines = html.split('\n');
@@ -109,7 +108,7 @@
             const trimmed = l.trim();
             if (!trimmed) return '';
             if (/___MD_BLOCK_\d+___/.test(trimmed)) return l;
-            if (/^<\/?(h[1-6]|ul|li|blockquote|a|p|div|pre|table|hr|mark)/.test(trimmed)) return l;
+            if (/^<\/?(h[1-6]|ul|li|blockquote|a|p|div|pre|table|hr)/.test(trimmed)) return l;
             return `<p>${l}</p>`;
         }).join('\n');
 

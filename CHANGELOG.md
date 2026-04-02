@@ -31,6 +31,13 @@
 - 若使用页面内 API 生成，建议确认 `API Base URL / API Key / Model` 已保存且对应域名已授权。
 - 若你通过 GitHub Releases 离线安装，建议下载并替换为本版本完整包，避免历史脚本残留带来的行为差异。
 
+### 🛠️ v1.0.90 补丁（2026-04-02）
+- **修复 LeetCode 提交通过自动入库误触发**：当题目记录已存在该题时，自动入库动作会被前置拦截，不再触发 `submission_passed` 写入，也不再显示“检测到提交通过”成功提示。
+- **修复短时状态切换误报**：提交状态快速切换（通过后紧接错误）场景下，不再因旧状态残留导致误报成功。
+- **移除 Markdown `==text==` 黄色高亮语法**：渲染器不再把 `==text==` 转换为 `<mark>`，普通文本保持原样，代码块内内容保持原样。
+- **影响范围**：LeetCode 笔记弹窗 API 渲染、TorchCode 笔记弹窗 API 渲染、Notes 页面预览（共用 `window.MarkdownRenderer`）。
+- **验证结果**：`node --test tests/**/*.test.js` 通过（78/78）；Playwright MCP 证据见 `docs/playwright-v1.0.90/`。
+
 ---
 
 **安装指南**：下载 release 附件中的 `code-note-helper.zip`，解压后在浏览器扩展管理页（开启开发者模式）加载使用。
@@ -89,4 +96,3 @@
 
 ---
 **安装指南**：下载下方的 `code-note-helper.zip`，解压后在浏览器的扩展管理页面（开启开发者模式）加载即可使用。
-
