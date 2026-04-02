@@ -35,8 +35,6 @@
 - **修复 LeetCode 提交通过自动入库误触发**：当题目记录已存在该题时，自动入库动作会被前置拦截，不再触发 `submission_passed` 写入，也不再显示“检测到提交通过”成功提示。
 - **修复短时状态切换误报**：提交状态快速切换（通过后紧接错误）场景下，不再因旧状态残留导致误报成功。
 - **移除 Markdown `==text==` 黄色高亮语法**：渲染器不再把 `==text==` 转换为 `<mark>`，普通文本保持原样，代码块内内容保持原样。
-- **影响范围**：LeetCode 笔记弹窗 API 渲染、TorchCode 笔记弹窗 API 渲染、Notes 页面预览（共用 `window.MarkdownRenderer`）。
-- **验证结果**：`node --test tests/**/*.test.js` 通过（78/78）；Playwright MCP 证据见 `docs/playwright-v1.0.90/`。
 
 ---
 
