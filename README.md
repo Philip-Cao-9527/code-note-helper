@@ -249,11 +249,6 @@
 ---
 ## 🙏致谢
 - [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) - 参考了该项目的部分数据同步设计，也可以搭配该项目使用，同步复习力扣
----
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Philip-Cao-9527/code-note-helper&type=Date)](https://www.star-history.com/#Philip-Cao-9527/code-note-helper&Date)
 
 ---
 
