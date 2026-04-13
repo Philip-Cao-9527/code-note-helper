@@ -2,9 +2,9 @@
 
 # CodeNote Helper
 
-**算法刷题笔记 · 深度学习复盘 · AI 对话时间轴**
+**算法刷题笔记 · 间隔复习 · 深度学习复盘 · AI 对话时间轴**
 
-一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
+一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记<br/>内置遗忘曲线驱动的间隔复习<br/>轻松驾驭超长对话<br/>让刷过的每一道题都成为真正的技术资产
 
 
 ![Version](https://img.shields.io/badge/version-1.1.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
@@ -24,7 +24,7 @@
 - 做完一道题想让 AI 帮忙讲讲思路，却要先复制题目，再复制代码，最后还要把参考题解也贴过去，来回折腾好几分钟才能开始提问。
 - 看完题解后虽然能懂代码逻辑，但依然不明白为什么要这样想，关键的突破口到底在哪里。
 - 提交代码后想知道自己的做法是否最优，AI 却只会给出思路不错这种毫无营养的场面话。
-- 辛辛苦苦刷了两百多道题，过了一个月回头看却发现忘得一干二净，因为根本没有沉淀下可以用来复习的笔记。
+- 辛辛苦苦熬夜刷了两百多道题，过了一个月回头看却发现忘得一干二净，根本没有留下可以用来高效回顾的复习体系。
 
 **准备深度学习手撕代码的时候：**
 - Attention、BatchNorm、CrossEntropy…… 考前每个都手撕了一遍，考完却又全忘了，下次复习依然要从零开始。
@@ -39,7 +39,7 @@
 <div align="center">
 
 **CodeNote Helper 就是为了终结这些低效与内耗而生 ✨ <br/>无论是算法刷题、深度学习实战，还是与 AI 的超长对话，它都能为你自动打通上下文:<br/>
-一键生成结构化笔记、智能深挖代码考点，并构建清晰的对话时间轴导航。<br/>把脏活累活交给插件，把时间留给真正的思考！**
+一键生成结构化笔记、智能深挖代码考点，为你量身定制复习计划，并构建清晰的对话时间轴导航。<br/>把脏活累活交给插件，把时间留给真正的思考！**
 </div>
 
 ---
@@ -56,17 +56,26 @@
 
 ![题目与题单管理界面](./assets/readme-gallery/popup-note.png)
 
+
 - **一键生成结构化笔记**：自动抓取题目描述、你写的代码、参考题解，交给 AI 生成包含思路分析、逐行代码讲解、复杂度分析的完整 Markdown 笔记。
 - **网页端算法私教**：刷题卡壳最崩溃的就是不知道问谁，切出去问AI还得来回贴代码，思路瞬间打断。点击答疑模式直接召唤代码私教。不用离开当前页面，它会顺着你写的源码找bug，讲透刚好卡住的那个点，再给一段能直接跑通的参考代码。哪里不会点哪里，主打陪伴式通关。
 - **真正有用的代码评价**：不再是敷衍的夸奖，而是针对你的代码实现逐段分析优缺点，给出具体的评分和改进方向。
 - **高质量题解优先推荐**：自动识别灵茶山艾府等大佬的题解并置顶作为推荐方案，帮你直接学习最优解法。
 - **三种灵活的使用方式**：复制 Prompt 粘贴到任意 AI 对话、直连 API 在页面内直接生成、或一键跳转到 ChatGPT / Claude / Gemini / DeepSeek。
 - **大语言模型 API 流式输出**：配置好 API 后，可在题目页面内直接生成笔记，支持实时流式响应，**所见即所得**。
-- **力扣复习入口复用原按钮**：LeetCode 题目页右下角 📝 按钮可直接选择“记忆状态”，首次评分会自动加入题目清单并进入复习计划。
-- **Popup 复习看板（首版）**：Popup 首页新增“今日待复习”轻摘要；力扣页显示“下次复习时间”，当天待复习题会自动置顶并高亮。
 - **题单进度追踪**：支持导入 Hot100、面试经典 150、灵神题单，**自动追踪做题状态**，全部完成时还有庆祝动画 🎉。
 - **独立笔记本**：内置双栏 Markdown 编辑器，支持实时预览、公式渲染与一键导出，**所有笔记集中管理**。
-- **灵活易用**：esc关闭笔记生成页面，拖动笔记生成页面边缘调整页面大小，拖动笔记以及咖啡按钮调整位置
+- **灵活易用**：**ESC**关闭笔记生成页面，拖动笔记生成**页面边缘**调整页面大小，拖动笔记以及咖啡按钮调整位置
+
+
+### 🔁 力扣间隔复习系统
+> 刷题不复习等于白刷，但自己安排复习计划又太累。这个模块帮你把"什么时候该复习哪道题"彻底自动化。
+
+- **做完题顺手评个分，复习计划自动生成**：提交通过后，题目页右下角的 📝 按钮会提醒你评估记忆状态。四档自评(很难想起 / 有点吃力 / 基本记得 / 很熟练)对应不同的复习间隔，评完分就自动进入复习队列。
+- **基于遗忘曲线的智能调度**：复习间隔不是拍脑袋定的，背后有 **FSRS 间隔重复算法** 在计算你对每道题的记忆衰减程度。评分越低间隔越短，评分越高间隔越长，随着多次复习逐步拉长周期，最终形成稳固的长期记忆。
+- **打开 Popup 就知道今天该复习什么**：概览页的"今日待复习"卡片一目了然地告诉你今天有几道题需要复习，点一下就能跳转到对应题目。力扣列表里到期的题目也会自动置顶并高亮，不用自己翻找。
+- **快捷复习入口，复习完秒更新状态**：已进入复习计划的题目旁边会出现 🧠 按钮，复习完直接点击重新评分，状态实时刷新，形成完整的做题、评分、遗忘、复习、再评分闭环。
+
 
 ### 🧠 深度学习笔记助手
 > 在 Deep-ML / TorchCode 页面自动启用
@@ -249,8 +258,9 @@
 - 🐛 [报告 Bug 或功能建议](https://github.com/Philip-Cao-9527/code-note-helper/issues)
 
 ---
+
 ## 🙏致谢
-- [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) - 参考了该项目的部分数据同步设计，也可以搭配该项目使用，同步复习力扣
+- [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) - 复习功能的早期灵感来源之一，参考了该项目的部分数据同步设计思路。CodeNote Helper 在此基础上做了更深度的整合，将复习系统直接嵌入题目详情页和 Popup 看板，引入 FSRS 间隔重复算法来动态计算每道题的 Recall Probability 和最优复习间隔，并与笔记生成、题单追踪打通，形成从做题、记笔记到间隔复习的完整闭环。同时还覆盖了深度学习手撕代码场景，支持 TorchCode 和 Deep-ML 的笔记生成与面试考点深挖，更贴合算法岗求职备战的实际需求。
 
 ---
 
@@ -280,7 +290,7 @@
 All your notes and progress stay in your local browser by default. Optional features like Nutstore WebDAV backup and API generation only connect to your personal cloud storage or the AI models you configure. No data is ever collected by the developer.
 
 ### 🙏Acknowledgments
-- [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) — inspiration for the data sync design and a great companion project for LeetCode review workflows.
+- [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) — one of the early inspirations for the review feature, particularly its data sync design. CodeNote Helper takes the idea further by embedding the spaced repetition system directly into LeetCode problem pages and the Popup dashboard, adopting the FSRS algorithm to dynamically compute Recall Probability and optimal review intervals for each problem, and unifying note generation, problem list tracking, and spaced review into a complete study loop. It also covers deep learning coding practice on TorchCode and Deep-ML with structured notes and interview-focused analysis, making it a more complete toolkit for anyone preparing for algorithm engineering roles.
 
 ### License
 [MIT](./LICENSE) © 2026 cao
