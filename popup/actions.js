@@ -55,14 +55,78 @@
         await chrome.runtime.openOptionsPage();
     }
 
-    async function promptReviewRating() {
-        const text = window.prompt('请选择记忆状态：\n1 = 很难想起\n2 = 有点吃力\n3 = 基本记得\n4 = 很熟练', '3');
-        if (text === null) return 0;
-        const rating = Number(String(text).trim());
-        if (!Number.isInteger(rating) || rating < 1 || rating > 4) {
-            return -1;
+    function createReviewRatingController(elements) {
+        const hasDialogElements = Boolean(
+            elements.reviewOverlay &&
+            elements.reviewCloseBtn &&
+            Array.isArray(elements.reviewRatingOptions) &&
+            elements.reviewRatingOptions.length
+        );
+
+        if (!hasDialogElements) {
+            return async function fallbackPromptReviewRating() {
+                if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
+                    const text = window.prompt('请选择记忆状态：\n1 = 很难想起\n2 = 有点吃力\n3 = 基本记得\n4 = 很熟练', '3');
+                    if (text === null) return 0;
+                    const rating = Number(String(text).trim());
+                    return Number.isInteger(rating) && rating >= 1 && rating <= 4 ? rating : -1;
+                }
+                return 0;
+            };
         }
-        return rating;
+
+        let pendingResolve = null;
+
+        function finish(result) {
+            elements.reviewOverlay.classList.remove('show');
+            elements.reviewOverlay.setAttribute('aria-hidden', 'true');
+            const resolve = pendingResolve;
+            pendingResolve = null;
+            if (resolve) resolve(result);
+        }
+
+        elements.reviewCloseBtn.addEventListener('click', () => finish(0));
+        elements.reviewOverlay.addEventListener('click', (event) => {
+            if (event.target === elements.reviewOverlay) {
+                finish(0);
+            }
+        });
+        elements.reviewRatingOptions.forEach((button) => {
+            button.addEventListener('click', () => {
+                const rating = Number(button.getAttribute('data-review-rating') || 0);
+                if (!Number.isInteger(rating) || rating < 1 || rating > 4) {
+                    finish(-1);
+                    return;
+                }
+                finish(rating);
+            });
+        });
+
+        if (typeof document !== 'undefined' && document && typeof document.addEventListener === 'function') {
+            document.addEventListener('keydown', (event) => {
+                if (!pendingResolve) return;
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    finish(0);
+                }
+            });
+        }
+
+        return async function showReviewRatingDialog() {
+            if (pendingResolve) {
+                finish(0);
+            }
+            elements.reviewOverlay.classList.add('show');
+            elements.reviewOverlay.setAttribute('aria-hidden', 'false');
+            const defaultButton = elements.reviewRatingOptions.find((button) => String(button.getAttribute('data-review-rating')) === '3')
+                || elements.reviewRatingOptions[0];
+            if (defaultButton && typeof defaultButton.focus === 'function') {
+                defaultButton.focus();
+            }
+            return new Promise((resolve) => {
+                pendingResolve = resolve;
+            });
+        };
     }
 
     function createConfirmController(elements) {
@@ -127,6 +191,7 @@
             onSyncIndicatorClick
         } = context;
         const showConfirm = createConfirmController(elements);
+        const showReviewRatingDialog = createReviewRatingController(elements);
 
         function setListImportStatus(message) {
             if (!elements.listImportStatus) return;
@@ -365,8 +430,12 @@
                     showToast('请先在题目详情页加入复习计划');
                     return;
                 }
+                if (reviewMeta.reviewedToday) {
+                    showToast('当前题目今天已经复习过了，不要重复复习');
+                    return;
+                }
 
-                const rating = await promptReviewRating();
+                const rating = await showReviewRatingDialog();
                 if (rating === 0) return;
                 if (rating < 0) {
                     showToast('请输入 1-4 的评分');
@@ -374,11 +443,29 @@
                 }
 
                 try {
-                    await store.rateProblemMemory({
+                    const result = await store.rateProblemMemory({
                         url: record.url || record.baseUrl || '',
+                        site: record.site || '',
+                        problemKey: record.problemKey || '',
                         title: record.title || record.problemKey || '未命名题目',
                         rating
                     });
+                    if (!result || result.success === false) {
+                        if (result && result.reason === 'already_reviewed_today') {
+                            showToast('当前题目今天已经复习过了，不要重复复习');
+                            return;
+                        }
+                        if (result && result.reason === 'unsupported') {
+                            showToast('当前题目缺少有效链接，请先在题目详情页打开后再复习');
+                            return;
+                        }
+                        if (result && result.reason === 'site_not_supported') {
+                            showToast('当前站点暂不支持复习评分');
+                            return;
+                        }
+                        showToast('更新失败，请稍后重试');
+                        return;
+                    }
                     await refreshData();
                     showToast('记忆状态已更新');
                 } catch (error) {

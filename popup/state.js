@@ -42,7 +42,10 @@
             confirmOverlay: document.getElementById('popup-confirm-overlay'),
             confirmMessage: document.getElementById('popup-confirm-message'),
             confirmCancelBtn: document.getElementById('popup-confirm-cancel'),
-            confirmOkBtn: document.getElementById('popup-confirm-ok')
+            confirmOkBtn: document.getElementById('popup-confirm-ok'),
+            reviewOverlay: document.getElementById('popup-review-overlay'),
+            reviewCloseBtn: document.getElementById('popup-review-close'),
+            reviewRatingOptions: Array.from(document.querySelectorAll('[data-review-rating]'))
         };
     }
 
@@ -67,6 +70,9 @@
             syncOverview: null,
             leetcodeReviewSummary: {
                 dueCount: 0,
+                dueRemainingCount: 0,
+                dueTotalCount: 0,
+                dueCompletedCount: 0,
                 recentDueTitle: '',
                 recentDueUrl: ''
             },

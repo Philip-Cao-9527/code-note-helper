@@ -26,6 +26,47 @@
         return `${(Math.max(0, Math.min(1, probability)) * 100).toFixed(1)}%`;
     }
 
+    function normalizeReviewMeta(meta) {
+        if (!meta || typeof meta !== 'object') {
+            return {
+                enabled: false,
+                isLeetcode: false,
+                dueByToday: false,
+                reviewedToday: false,
+                dueToday: false,
+                overdueDays: 0,
+                nextReviewTime: 0,
+                review: null,
+                ratingLabel: '未设置',
+                recallProbability: 1
+            };
+        }
+
+        const dueByToday = Boolean(meta.dueByToday ?? meta.dueToday);
+        const reviewedToday = Boolean(meta.reviewedToday ?? (meta.review && meta.review.reviewedToday));
+        const overdueDaysRaw = Number(meta.overdueDays || 0);
+
+        return {
+            enabled: Boolean(meta.enabled),
+            isLeetcode: Boolean(meta.isLeetcode),
+            dueByToday,
+            reviewedToday,
+            dueToday: dueByToday && !reviewedToday,
+            overdueDays: Number.isFinite(overdueDaysRaw) ? Math.max(0, Math.floor(overdueDaysRaw)) : 0,
+            nextReviewTime: Number(meta.nextReviewTime || 0),
+            review: meta.review || null,
+            ratingLabel: meta.ratingLabel || '未设置',
+            recallProbability: Number(meta.recallProbability || 0)
+        };
+    }
+
+    function getLeetcodeReviewGroup(reviewMeta) {
+        if (!reviewMeta.enabled || !reviewMeta.isLeetcode) return 'none';
+        if (reviewMeta.dueByToday && !reviewMeta.reviewedToday) return 'due-today';
+        if (reviewMeta.dueByToday && reviewMeta.reviewedToday) return 'done-today';
+        return 'normal';
+    }
+
     function buildProblemTooltip(store, record, includeReview) {
         const fullTitle = record.title || record.problemKey || '未命名题目';
         const stage = store.getRecordStage(record);
@@ -39,13 +80,16 @@
         ];
 
         if (includeReview && store && typeof store.getRecordReviewMeta === 'function') {
-            const reviewMeta = store.getRecordReviewMeta(record);
-            if (reviewMeta && reviewMeta.enabled && reviewMeta.isLeetcode) {
+            const reviewMeta = normalizeReviewMeta(store.getRecordReviewMeta(record));
+            if (reviewMeta.enabled && reviewMeta.isLeetcode) {
+                const nextReviewAt = reviewMeta.review && reviewMeta.review.nextReviewAt;
                 lines.push(`Recall probability：${formatRecallProbability(reviewMeta.recallProbability)}`);
                 lines.push(`当前记忆状态：${reviewMeta.ratingLabel || '未设置'}`);
+                lines.push(`下次复习时间：${nextReviewAt ? stateUtils.formatDateTime(nextReviewAt) : '未设置'}`);
             } else {
                 lines.push('Recall probability：暂无');
                 lines.push('当前记忆状态：未设置');
+                lines.push('下次复习时间：未设置');
             }
         }
 
@@ -64,35 +108,45 @@
 
     function sortLeetcodeRecords(records, store) {
         return records.slice().sort((left, right) => {
-            const leftMeta = store && typeof store.getRecordReviewMeta === 'function'
+            const leftRawMeta = store && typeof store.getRecordReviewMeta === 'function'
                 ? store.getRecordReviewMeta(left)
                 : null;
-            const rightMeta = store && typeof store.getRecordReviewMeta === 'function'
+            const rightRawMeta = store && typeof store.getRecordReviewMeta === 'function'
                 ? store.getRecordReviewMeta(right)
                 : null;
-            const leftHasReview = Boolean(
-                leftMeta &&
-                leftMeta.enabled &&
-                leftMeta.isLeetcode &&
-                Number(leftMeta.nextReviewTime || 0) > 0
-            );
-            const rightHasReview = Boolean(
-                rightMeta &&
-                rightMeta.enabled &&
-                rightMeta.isLeetcode &&
-                Number(rightMeta.nextReviewTime || 0) > 0
-            );
+            const leftMeta = normalizeReviewMeta(leftRawMeta);
+            const rightMeta = normalizeReviewMeta(rightRawMeta);
+            const leftGroup = getLeetcodeReviewGroup(leftMeta);
+            const rightGroup = getLeetcodeReviewGroup(rightMeta);
+            const groupRank = {
+                'due-today': 0,
+                'done-today': 1,
+                normal: 2,
+                none: 3
+            };
+            const leftRank = groupRank[leftGroup];
+            const rightRank = groupRank[rightGroup];
 
-            if (leftHasReview !== rightHasReview) {
-                return leftHasReview ? -1 : 1;
+            if (leftRank !== rightRank) {
+                return leftRank - rightRank;
             }
 
-            if (leftHasReview && rightHasReview) {
-                const leftNext = Number(leftMeta.nextReviewTime || 0);
-                const rightNext = Number(rightMeta.nextReviewTime || 0);
-                if (leftNext !== rightNext) {
-                    return leftNext - rightNext;
+            if (leftGroup === 'due-today') {
+                if (leftMeta.nextReviewTime !== rightMeta.nextReviewTime) {
+                    return leftMeta.nextReviewTime - rightMeta.nextReviewTime;
                 }
+                return compareUpdatedAtDesc(left, right);
+            }
+
+            if (leftGroup === 'done-today') {
+                return compareUpdatedAtDesc(left, right);
+            }
+
+            if (leftGroup === 'normal') {
+                if (leftMeta.nextReviewTime !== rightMeta.nextReviewTime) {
+                    return leftMeta.nextReviewTime - rightMeta.nextReviewTime;
+                }
+                return compareUpdatedAtDesc(left, right);
             }
             return compareUpdatedAtDesc(left, right);
         });
@@ -108,19 +162,45 @@
         return `${year}-${month}-${day}`;
     }
 
+    function buildReviewHintText(reviewMeta) {
+        if (!reviewMeta || !reviewMeta.enabled || !reviewMeta.isLeetcode) {
+            return '下次复习：未设置';
+        }
+
+        if (reviewMeta.dueByToday && !reviewMeta.reviewedToday) {
+            if (reviewMeta.overdueDays > 0) {
+                return `已拖延${reviewMeta.overdueDays}天`;
+            }
+            return '今天需要复习';
+        }
+
+        if (reviewMeta.dueByToday && reviewMeta.reviewedToday) {
+            return '今天已经复习';
+        }
+
+        const nextReviewAt = reviewMeta.review && reviewMeta.review.nextReviewAt;
+        if (!nextReviewAt) {
+            return '下次复习：未设置';
+        }
+        return `下次复习：${formatCompactDate(nextReviewAt)}`;
+    }
+
     function buildRecordRow(record, stage, compactLabel, tooltip, options) {
-        const reviewMeta = options.reviewMeta || null;
-        const dueClass = reviewMeta && reviewMeta.dueToday ? ' review-due' : '';
+        const reviewMeta = normalizeReviewMeta(options.reviewMeta);
+        const group = getLeetcodeReviewGroup(reviewMeta);
+        const groupClass = group === 'due-today'
+            ? ' review-due'
+            : group === 'done-today'
+                ? ' review-done-today'
+                : '';
         const nextReviewText = options.showNextReview
-            ? `下次复习：${reviewMeta && reviewMeta.review && reviewMeta.review.nextReviewAt
-                ? formatCompactDate(reviewMeta.review.nextReviewAt)
-                : '未设置'}`
+            ? buildReviewHintText(reviewMeta)
             : '';
         const source = options.source || 'problems';
         const openUrl = record.url || record.baseUrl || '';
 
         return `
-          <div class="compact-line${dueClass}" title="${stateUtils.escapeHtml(tooltip)}" data-review-due="${reviewMeta && reviewMeta.dueToday ? 'true' : 'false'}">
+          <div class="compact-line${groupClass}" title="${stateUtils.escapeHtml(tooltip)}" data-review-group="${stateUtils.escapeHtml(group)}">
             <button
               type="button"
               class="compact-open"
@@ -186,14 +266,15 @@
             const stage = store.getRecordStage(record);
             const compactLabel = stateUtils.getCompactStageLabel(stage.code);
             const tooltip = buildProblemTooltip(store, record, true);
-            const reviewMeta = store && typeof store.getRecordReviewMeta === 'function'
+            const reviewRawMeta = store && typeof store.getRecordReviewMeta === 'function'
                 ? store.getRecordReviewMeta(record)
                 : null;
+            const reviewMeta = normalizeReviewMeta(reviewRawMeta);
             return buildRecordRow(record, stage, compactLabel, tooltip, {
                 source: 'problems',
                 showNextReview: true,
                 reviewMeta,
-                showQuickReview: Boolean(reviewMeta && reviewMeta.enabled && reviewMeta.isLeetcode)
+                showQuickReview: Boolean(reviewMeta.enabled && reviewMeta.isLeetcode)
             });
         }).join('');
 

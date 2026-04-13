@@ -144,11 +144,36 @@
       </div>
     </div>
   </div>
+  <div class="review-rating-overlay" id="popup-review-overlay" aria-hidden="true">
+    <div class="review-rating-dialog" role="dialog" aria-modal="true" aria-labelledby="popup-review-title">
+      <button class="review-rating-close" id="popup-review-close" type="button" aria-label="关闭">×</button>
+      <div class="review-rating-title" id="popup-review-title">这题现在记得怎么样？</div>
+      <div class="review-rating-options">
+        <button class="review-rating-option" type="button" data-review-rating="1">
+          <span class="review-rating-label">很难想起</span>
+          <span class="review-rating-preview">预计下次复习：5天后</span>
+        </button>
+        <button class="review-rating-option" type="button" data-review-rating="2">
+          <span class="review-rating-label">有点吃力</span>
+          <span class="review-rating-preview">预计下次复习：10天后</span>
+        </button>
+        <button class="review-rating-option" type="button" data-review-rating="3">
+          <span class="review-rating-label">基本记得</span>
+          <span class="review-rating-preview">预计下次复习：18天后</span>
+        </button>
+        <button class="review-rating-option" type="button" data-review-rating="4">
+          <span class="review-rating-label">很熟练</span>
+          <span class="review-rating-preview">预计下次复习：36天后</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script src="../shared/storage.js"></script>
   <script src="../shared/problem-data/constants.js"></script>
   <script src="../shared/problem-data/helpers.js"></script>
   <script src="../shared/problem-data/sync-core.js"></script>
+  <script src="../shared/problem-data/review-fsrs.js"></script>
   <script src="../shared/problem-data/records.js"></script>
   <script src="../shared/problem-data/importers/hot100.js"></script>
   <script src="../shared/problem-data/lists.js"></script>

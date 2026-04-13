@@ -54,10 +54,17 @@
 
         if (elements.overviewReviewCard) {
             const reviewSummary = state.leetcodeReviewSummary || {};
-            const dueCount = Number(reviewSummary.dueCount || 0);
+            const dueRemainingCount = Number(reviewSummary.dueRemainingCount ?? reviewSummary.dueCount ?? 0);
+            const dueTotalCount = Number(reviewSummary.dueTotalCount ?? dueRemainingCount);
             const recentTitle = String(reviewSummary.recentDueTitle || '').trim();
-            const reviewCardClass = dueCount > 0 ? 'review-summary-card has-due' : 'review-summary-card is-empty';
+            const reviewCardClass = dueTotalCount > 0
+                ? (dueRemainingCount > 0 ? 'review-summary-card has-due' : 'review-summary-card done-today')
+                : 'review-summary-card is-empty';
             const todayLabel = getTodayLabel();
+            const progressText = dueTotalCount > 0
+                ? `今天有 ${dueRemainingCount}/${dueTotalCount} 道题需要复习`
+                : '今天没有待复习题目';
+            const ringUnit = dueTotalCount > 0 ? `/${dueTotalCount}` : '题';
 
             elements.overviewReviewCard.innerHTML = `
               <div class="${reviewCardClass}">
@@ -67,11 +74,11 @@
                 </div>
                 <div class="review-summary-ring" aria-hidden="true">
                   <div class="review-summary-ring-inner">
-                    <span class="review-summary-count">${stateUtils.escapeHtml(String(dueCount))}</span>
-                    <span class="review-summary-count-unit">题</span>
+                    <span class="review-summary-count">${stateUtils.escapeHtml(String(dueRemainingCount))}</span>
+                    <span class="review-summary-count-unit">${stateUtils.escapeHtml(ringUnit)}</span>
                   </div>
                 </div>
-                <div class="review-summary-main">${dueCount > 0 ? `今天有 ${dueCount} 道题需要复习` : '今天没有待复习题目'}</div>
+                <div class="review-summary-main">${stateUtils.escapeHtml(progressText)}</div>
                 <div class="review-summary-sub">${recentTitle ? `最近一题：${stateUtils.escapeHtml(recentTitle)}` : '最近一题：暂无'}</div>
                 <button class="review-summary-btn" type="button" data-switch-view="leetcode-view">去力扣题目查看</button>
               </div>

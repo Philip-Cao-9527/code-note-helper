@@ -249,6 +249,9 @@
                     ? store.getLeetcodeReviewSummary()
                     : Promise.resolve({
                         dueCount: 0,
+                        dueRemainingCount: 0,
+                        dueTotalCount: 0,
+                        dueCompletedCount: 0,
                         recentDueTitle: '',
                         recentDueUrl: ''
                     })
@@ -261,6 +264,9 @@
             state.syncOverview = syncOverview;
             state.leetcodeReviewSummary = leetcodeReviewSummary || {
                 dueCount: 0,
+                dueRemainingCount: 0,
+                dueTotalCount: 0,
+                dueCompletedCount: 0,
                 recentDueTitle: '',
                 recentDueUrl: ''
             };

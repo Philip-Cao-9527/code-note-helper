@@ -18,20 +18,13 @@
     const DAY_MS = 24 * 60 * 60 * 1000;
     const LEETCODE_SITES = new Set(['leetcode.cn', 'leetcode.com']);
     const DEEP_LEARNING_SITES = new Set(['deep-ml.com', 'duoan-torchcode.hf.space']);
-    const REVIEW_INTERVAL_DAY_MAP = {
-        1: 5,
-        2: 10,
-        3: 18,
-        4: 36
-    };
     const REVIEW_RATING_LABELS = {
         1: '很难想起',
         2: '有点吃力',
         3: '基本记得',
         4: '很熟练'
     };
-    const FORGETTING_CURVE_FACTOR = 19 / 81;
-    const FORGETTING_CURVE_DECAY = -0.5;
+    const reviewFsrs = modules.reviewFsrs || {};
 
     function parseTorchCodeNotebookPath(pathname) {
         const matchers = [
@@ -75,6 +68,13 @@
         return date.getTime();
     }
 
+    function getLocalDayStartTimestamp(input) {
+        const date = input instanceof Date ? new Date(input.getTime()) : new Date(input || Date.now());
+        if (Number.isNaN(date.getTime())) return Date.now();
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
+    }
+
     function normalizeIso(input) {
         if (!input) return null;
         const date = new Date(input);
@@ -93,6 +93,52 @@
         if (!Number.isInteger(number)) return 0;
         if (number < 1 || number > 4) return 0;
         return number;
+    }
+
+    function parseFsrsTimestamp(input) {
+        if (reviewFsrs.parseFsrsTimestamp) {
+            return reviewFsrs.parseFsrsTimestamp(input);
+        }
+        const value = Number(input);
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    function normalizeFsrsStateValue(input) {
+        if (reviewFsrs.normalizeFsrsStateValue) {
+            return reviewFsrs.normalizeFsrsStateValue(input);
+        }
+        const number = Number(input);
+        return Number.isInteger(number) ? number : 0;
+    }
+
+    function getFsrsRatingFromMemoryRating(rating) {
+        if (reviewFsrs.getFsrsRatingFromMemoryRating) {
+            return reviewFsrs.getFsrsRatingFromMemoryRating(rating);
+        }
+        return rating;
+    }
+
+    function buildNextFsrsCard(lastCard, nowDate, rating) {
+        if (reviewFsrs.buildNextFsrsCard) {
+            return reviewFsrs.buildNextFsrsCard(lastCard, nowDate, rating, reviewFsrs.fsrsParamsRef);
+        }
+        throw new Error('FSRS 内核未加载');
+    }
+
+    function resolveReviewBaseTime(record, previousReview, nowTime) {
+        const fsrsState = previousReview.fsrsState || {};
+        const timeCandidates = [
+            fsrsState.lastReview,
+            previousReview.lastRatedAt,
+            record && record.submissionPassedAt,
+            record && record.manualAddedAt,
+            record && record.lastActionAt
+        ];
+        for (const candidate of timeCandidates) {
+            const value = parseFsrsTimestamp(candidate);
+            if (value > 0) return value;
+        }
+        return nowTime;
     }
 
     function buildDefaultReviewState() {
@@ -126,15 +172,15 @@
         merged.reviewedDateKey = String(merged.reviewedDateKey || '').trim();
 
         if (merged.fsrsState && typeof merged.fsrsState === 'object') {
-            const nextReviewNumber = Number(merged.fsrsState.nextReview || 0);
-            const lastReviewNumber = Number(merged.fsrsState.lastReview || 0);
+            const nextReviewNumber = parseFsrsTimestamp(merged.fsrsState.nextReview);
+            const lastReviewNumber = parseFsrsTimestamp(merged.fsrsState.lastReview);
             merged.fsrsState = {
                 ...merged.fsrsState,
-                difficulty: clampNumber(merged.fsrsState.difficulty || 5.5, 1, 10),
-                stability: Math.max(1, Number(merged.fsrsState.stability || 1)),
-                state: Number(merged.fsrsState.state || 2),
-                reviewCount: Math.max(0, Number(merged.fsrsState.reviewCount || 0)),
-                lapses: Math.max(0, Number(merged.fsrsState.lapses || 0)),
+                difficulty: Math.max(0, Number(merged.fsrsState.difficulty || 0)),
+                stability: Math.max(0, Number(merged.fsrsState.stability || 0)),
+                state: normalizeFsrsStateValue(merged.fsrsState.state),
+                reviewCount: Math.max(0, Number(merged.fsrsState.reviewCount || merged.fsrsState.reps || 0)),
+                lapses: Math.max(0, Number(merged.fsrsState.lapses || merged.fsrsState.lapse_count || 0)),
                 quality: parseRating(merged.fsrsState.quality || merged.lastRating || 0),
                 lastReview: Number.isFinite(lastReviewNumber) ? lastReviewNumber : 0,
                 nextReview: Number.isFinite(nextReviewNumber) ? nextReviewNumber : 0
@@ -154,16 +200,19 @@
     }
 
     function calculateElapsedDays(lastReviewTime, nowTime = Date.now()) {
-        const left = Number(lastReviewTime || 0);
+        if (reviewFsrs.calculateElapsedDays) {
+            return reviewFsrs.calculateElapsedDays(lastReviewTime, nowTime);
+        }
+        const left = parseFsrsTimestamp(lastReviewTime);
         const right = Number(nowTime || Date.now());
         if (!Number.isFinite(left) || !Number.isFinite(right) || right <= left) return 0;
-        return Math.max(0, (right - left) / DAY_MS);
+        return Math.max(0, Math.floor((right - left) / DAY_MS));
     }
 
     function forgettingCurve(elapsedDays, stability) {
-        const elapsed = Math.max(0, Number(elapsedDays || 0));
-        const safeStability = Math.max(0.1, Number(stability || 0.1));
-        const retention = Math.pow(1 + FORGETTING_CURVE_FACTOR * (elapsed / (9 * safeStability)), FORGETTING_CURVE_DECAY);
+        const retention = reviewFsrs.forgettingCurve
+            ? reviewFsrs.forgettingCurve(elapsedDays, stability)
+            : 0;
         if (!Number.isFinite(retention)) return 0;
         return Math.max(0, Math.min(1, retention));
     }
@@ -172,13 +221,19 @@
         const review = normalizeReviewState(record && record.review, nowTime);
         const site = String(record && record.site || '').trim().toLowerCase();
         const isLeetcode = isLeetcodeSite(site);
+        const dayStart = getLocalDayStartTimestamp(nowTime);
         const nextReviewIso = review.nextReviewAt;
         const nextReviewTime = nextReviewIso ? new Date(nextReviewIso).getTime() : 0;
         const hasNextReview = Number.isFinite(nextReviewTime) && nextReviewTime > 0;
-        const dueByToday = hasNextReview && nextReviewTime <= getLocalDayEndTimestamp(nowTime);
-        const dueToday = Boolean(review.enabled && isLeetcode && dueByToday && !review.reviewedToday);
+        const rawDueByToday = hasNextReview && nextReviewTime <= getLocalDayEndTimestamp(nowTime);
+        const reviewedToday = Boolean(review.reviewedToday);
+        const dueByToday = Boolean(review.enabled && isLeetcode && (rawDueByToday || reviewedToday));
+        const dueToday = Boolean(dueByToday && !review.reviewedToday);
+        const overdueDays = dueToday && nextReviewTime < dayStart
+            ? Math.max(1, Math.ceil((dayStart - nextReviewTime) / DAY_MS))
+            : 0;
         const fsrsState = review.fsrsState || null;
-        const recallProbability = fsrsState
+        const recallProbability = fsrsState && fsrsState.stability > 0 && fsrsState.lastReview > 0
             ? forgettingCurve(calculateElapsedDays(fsrsState.lastReview, nowTime), fsrsState.stability)
             : 1;
 
@@ -187,6 +242,9 @@
             review,
             isLeetcode,
             dueToday,
+            dueByToday: Boolean(review.enabled && isLeetcode && dueByToday),
+            reviewedToday,
+            overdueDays,
             nextReviewTime,
             recallProbability,
             ratingLabel: REVIEW_RATING_LABELS[review.lastRating] || '未设置'
@@ -203,26 +261,27 @@
         const nowIso = nowDate.toISOString();
         const todayKey = getLocalDateKeyFromTime(nowDate);
         const previousReview = normalizeReviewState(record && record.review, nowTime);
+        const previousDueByToday = Boolean(getRecordReviewMeta(record, nowTime).dueByToday);
+        const baseTime = resolveReviewBaseTime(record, previousReview, nowTime);
         const previousFsrs = previousReview.fsrsState || {};
-        const previousReviewCount = Math.max(0, Number(previousFsrs.reviewCount || 0));
-        const previousStability = Math.max(1, Number(previousFsrs.stability || 0));
-        const baseInterval = REVIEW_INTERVAL_DAY_MAP[safeRating] || 10;
-
-        let nextIntervalDays = baseInterval;
-        if (previousReviewCount > 0 && previousStability > 0) {
-            const retentionFactor = safeRating === 1 ? 0.6 : safeRating === 2 ? 0.95 : safeRating === 3 ? 1.25 : 1.7;
-            nextIntervalDays = Math.max(1, Math.round(previousStability * retentionFactor));
-        }
-
-        const baseDifficulty = previousReviewCount > 0
-            ? clampNumber(previousFsrs.difficulty || 5.5, 1, 10)
-            : clampNumber(7 - safeRating * 1.2, 1, 10);
-        const difficultyDelta = safeRating === 1 ? 0.55 : safeRating === 2 ? 0.2 : safeRating === 3 ? -0.1 : -0.35;
-        const nextDifficulty = clampNumber(baseDifficulty + difficultyDelta, 1, 10);
-        const nextReviewTime = nowTime + nextIntervalDays * DAY_MS;
-        const nextReviewIso = new Date(nextReviewTime).toISOString();
-        const nextReviewCount = previousReviewCount + 1;
-        const nextLapses = Math.max(0, Number(previousFsrs.lapses || 0)) + (safeRating === 1 ? 1 : 0);
+        const lastReviewDate = new Date(baseTime);
+        const cardDueTime = parseFsrsTimestamp(previousFsrs.nextReview) || baseTime;
+        const cardScheduledDays = Math.max(0, Math.floor((cardDueTime - baseTime) / DAY_MS));
+        const fsrsCard = {
+            due: new Date(cardDueTime),
+            stability: Number(previousFsrs.stability || 0),
+            difficulty: Number(previousFsrs.difficulty || 0),
+            elapsed_days: Math.max(0, (nowTime - baseTime) / DAY_MS),
+            scheduled_days: cardScheduledDays,
+            reps: Math.max(0, Number(previousFsrs.reviewCount || 0)),
+            lapse_count: Math.max(0, Number(previousFsrs.lapses || 0)),
+            state: normalizeFsrsStateValue(previousFsrs.state),
+            last_review: lastReviewDate
+        };
+        const fsrsRating = getFsrsRatingFromMemoryRating(safeRating);
+        const nextFsrsCard = buildNextFsrsCard(fsrsCard, nowDate, fsrsRating);
+        const nextReviewTime = nextFsrsCard.due.getTime();
+        const nextReviewIso = nextFsrsCard.due.toISOString();
 
         return {
             enabled: true,
@@ -230,16 +289,16 @@
             lastRating: safeRating,
             lastRatedAt: nowIso,
             nextReviewAt: nextReviewIso,
-            reviewedToday: true,
-            reviewedDateKey: todayKey,
+            reviewedToday: previousDueByToday,
+            reviewedDateKey: previousDueByToday ? todayKey : '',
             fsrsState: {
-                difficulty: nextDifficulty,
-                stability: Math.max(1, nextIntervalDays),
-                state: 2,
-                lastReview: nowTime,
+                difficulty: nextFsrsCard.difficulty,
+                stability: nextFsrsCard.stability,
+                state: nextFsrsCard.state,
+                lastReview: parseFsrsTimestamp(nextFsrsCard.last_review || nowDate),
                 nextReview: nextReviewTime,
-                reviewCount: nextReviewCount,
-                lapses: nextLapses,
+                reviewCount: Math.max(0, Number(nextFsrsCard.reps || 0)),
+                lapses: Math.max(0, Number(nextFsrsCard.lapse_count || 0)),
                 quality: safeRating
             }
         };
@@ -369,6 +428,40 @@
 
     function buildRecordId(identity) {
         return `${identity.site}:${identity.problemKey}`;
+    }
+
+    function createIdentityFromSiteAndProblemKey(siteInput, problemKeyInput) {
+        const site = helpers.normalizeHost(siteInput);
+        const problemKey = String(problemKeyInput || '').trim();
+        if (!site || !problemKey) return null;
+
+        if (site === 'leetcode.cn' || site === 'leetcode.com') {
+            const baseUrl = `https://${site}/problems/${problemKey}/`;
+            return {
+                supported: true,
+                type: 'leetcode_problem',
+                site,
+                problemKey,
+                canonicalId: `leet:${problemKey}`,
+                url: baseUrl,
+                baseUrl
+            };
+        }
+
+        if (site === 'codefun2000.com') {
+            const baseUrl = `https://${site}/p/${problemKey}`;
+            return {
+                supported: true,
+                type: 'codefun_problem',
+                site,
+                problemKey,
+                canonicalId: `codefun:${problemKey}`,
+                url: baseUrl,
+                baseUrl
+            };
+        }
+
+        return null;
     }
 
     function createEmptyRecord(identity, title, now) {
@@ -709,8 +802,11 @@
     }
 
     async function rateProblemMemory(options) {
-        const { url, title, rating } = options || {};
-        const identity = extractProblemIdentity(url);
+        const { url, title, rating, site, problemKey } = options || {};
+        let identity = extractProblemIdentity(url);
+        if ((!identity || !identity.supported) && site && problemKey) {
+            identity = createIdentityFromSiteAndProblemKey(site, problemKey);
+        }
         if (!identity || !identity.supported) {
             return {
                 success: false,
@@ -729,8 +825,25 @@
             throw new Error('记忆状态评分无效');
         }
 
+        const nowTime = Date.now();
+        const recordsMap = await getProblemRecords();
+        const recordId = buildRecordId(identity);
+        const existingRecord = recordsMap[recordId];
+        if (existingRecord) {
+            const reviewMeta = getRecordReviewMeta(existingRecord, nowTime);
+            if (reviewMeta && reviewMeta.reviewedToday) {
+                return {
+                    ...existingRecord,
+                    review: normalizeReviewState(existingRecord.review, nowTime),
+                    success: false,
+                    reason: 'already_reviewed_today',
+                    isNewRecord: false
+                };
+            }
+        }
+
         const result = await trackProblemAction({
-            url,
+            url: identity.url || url,
             title,
             actionType: 'review_rated',
             rating: safeRating
@@ -745,25 +858,30 @@
 
     async function getLeetcodeReviewSummary(nowTime = Date.now()) {
         const records = await getProblemRecords();
-        const dueRecords = Object.values(records || {})
-            .filter((record) => {
-                const reviewMeta = getRecordReviewMeta(record, nowTime);
-                return reviewMeta.isLeetcode && reviewMeta.dueToday;
-            })
+        const reviewRecords = Object.values(records || {})
+            .map((record) => ({
+                record,
+                reviewMeta: getRecordReviewMeta(record, nowTime)
+            }))
+            .filter((item) => item.reviewMeta.isLeetcode && item.reviewMeta.enabled && item.reviewMeta.dueByToday)
             .sort((left, right) => {
-                const leftMeta = getRecordReviewMeta(left, nowTime);
-                const rightMeta = getRecordReviewMeta(right, nowTime);
-                if (leftMeta.nextReviewTime !== rightMeta.nextReviewTime) {
-                    return leftMeta.nextReviewTime - rightMeta.nextReviewTime;
+                if (left.reviewMeta.nextReviewTime !== right.reviewMeta.nextReviewTime) {
+                    return left.reviewMeta.nextReviewTime - right.reviewMeta.nextReviewTime;
                 }
-                return helpers.compareIsoDesc(left.updatedAt, right.updatedAt);
+                return helpers.compareIsoDesc(left.record.updatedAt, right.record.updatedAt);
             });
-
-        const recent = dueRecords[0] || null;
+        const pendingRecords = reviewRecords.filter((item) => !item.reviewMeta.reviewedToday);
+        const completedRecords = reviewRecords.filter((item) => item.reviewMeta.reviewedToday);
+        const recent = pendingRecords[0] || completedRecords[0] || null;
+        const dueTotalCount = reviewRecords.length;
+        const dueRemainingCount = pendingRecords.length;
         return {
-            dueCount: dueRecords.length,
-            recentDueTitle: recent ? (recent.title || recent.problemKey || '未命名题目') : '',
-            recentDueUrl: recent ? (recent.url || recent.baseUrl || '') : ''
+            dueCount: dueRemainingCount,
+            dueRemainingCount,
+            dueTotalCount,
+            dueCompletedCount: completedRecords.length,
+            recentDueTitle: recent ? (recent.record.title || recent.record.problemKey || '未命名题目') : '',
+            recentDueUrl: recent ? (recent.record.url || recent.record.baseUrl || '') : ''
         };
     }
 

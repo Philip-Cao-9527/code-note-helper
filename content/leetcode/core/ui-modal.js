@@ -1601,6 +1601,21 @@
             }
 
             if (isLeetcodeProblemHost() && typeof store.rateProblemMemory === 'function') {
+                if (typeof store.getProblemRecordByUrl === 'function' && typeof store.getRecordReviewMeta === 'function') {
+                    try {
+                        const currentRecord = await store.getProblemRecordByUrl(window.location.href);
+                        if (currentRecord) {
+                            const reviewMeta = store.getRecordReviewMeta(currentRecord);
+                            if (reviewMeta && reviewMeta.reviewedToday) {
+                                showToast('ℹ️ 当前题目今天已经复习过了，不要重复复习', 2600);
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[Note Helper] 读取题目复习状态失败：', error);
+                    }
+                }
+
                 const rating = await showMemoryRatingDialog();
                 if (!rating) {
                     return;
@@ -1614,6 +1629,10 @@
                     });
 
                     if (!result || result.success === false) {
+                        if (result && result.reason === 'already_reviewed_today') {
+                            showToast('ℹ️ 当前题目今天已经复习过了，不要重复复习', 2600);
+                            return;
+                        }
                         showToast('⚠️ 当前页面暂不支持复习评分', 2800);
                         return;
                     }

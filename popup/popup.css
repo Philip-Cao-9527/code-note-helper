@@ -214,6 +214,10 @@ input {
   border-color: rgba(100, 116, 139, 0.35);
 }
 
+.review-summary-card.done-today {
+  border-color: rgba(74, 222, 128, 0.42);
+}
+
 .review-summary-top {
   display: flex;
   align-items: baseline;
@@ -498,6 +502,16 @@ input {
 .compact-line.review-due .compact-review-time {
   color: #fde68a;
   font-weight: 700;
+}
+
+.compact-line.review-done-today {
+  border-color: rgba(74, 222, 128, 0.34);
+  background: linear-gradient(90deg, rgba(22, 101, 52, 0.26), rgba(15, 23, 42, 0.58));
+}
+
+.compact-line.review-done-today .compact-review-time {
+  color: #86efac;
+  opacity: 0.9;
 }
 
 .compact-index {
@@ -926,6 +940,95 @@ input {
 
 .confirm-btn.danger:hover {
   filter: brightness(1.08);
+}
+
+.review-rating-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.review-rating-overlay.show {
+  display: flex;
+}
+
+.review-rating-dialog {
+  width: min(360px, calc(100vw - 26px));
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  box-shadow: 0 20px 38px rgba(2, 6, 23, 0.46);
+  padding: 14px;
+  position: relative;
+}
+
+.review-rating-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-rating-title {
+  margin: 4px 0 12px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.review-rating-options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.review-rating-option {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.review-rating-option:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.review-rating-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.review-rating-preview {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.review-rating-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 
