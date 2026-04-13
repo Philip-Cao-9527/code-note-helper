@@ -1,5 +1,5 @@
 ﻿/* CodeNote Helper 样式 */
-/* 版本：1.0.81 */
+/* 版本：1.1.0 */
 
 /* 悬浮按钮 */
 #note-helper-btn {
@@ -27,6 +27,109 @@
 #note-helper-btn:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+#note-helper-btn.review-remind {
+  animation: note-review-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.35);
+}
+
+@keyframes note-review-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.35);
+  }
+
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 8px rgba(124, 58, 237, 0.3);
+  }
+}
+
+.nh-review-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10020;
+  backdrop-filter: blur(1px);
+}
+
+.nh-review-dialog {
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
+  padding: 16px;
+  position: relative;
+}
+
+.nh-review-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.nh-review-title {
+  margin: 6px 0 12px;
+  padding-right: 22px;
+  font-size: 22px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #334155;
+}
+
+.nh-review-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nh-review-option {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nh-review-option:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.nh-review-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.nh-review-preview {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.nh-review-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 /* 弹窗 */

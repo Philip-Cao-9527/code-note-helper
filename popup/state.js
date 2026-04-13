@@ -1,6 +1,6 @@
 /**
  * Popup 状态与工具
- * 版本：1.0.68
+ * 版本：1.1.0
  */
 
 (function () {
@@ -14,11 +14,16 @@
             navButtons: Array.from(document.querySelectorAll('.nav-btn')),
             views: Array.from(document.querySelectorAll('.view')),
             overviewSummary: document.getElementById('overview-summary'),
+            overviewReviewCard: document.getElementById('overview-review-card'),
             openSettingsBtn: document.getElementById('open-settings'),
             problemsSearchInput: document.getElementById('problems-search'),
             problemsStatusFilter: document.getElementById('problems-status-filter'),
             problemsList: document.getElementById('problems-list'),
             problemsPagination: document.getElementById('problems-pagination'),
+            deepmlSearchInput: document.getElementById('deepml-search'),
+            deepmlStatusFilter: document.getElementById('deepml-status-filter'),
+            deepmlList: document.getElementById('deepml-list'),
+            deepmlPagination: document.getElementById('deepml-pagination'),
             listImportUrl: document.getElementById('list-import-url'),
             importHot100Btn: document.getElementById('import-hot100'),
             importListUrlBtn: document.getElementById('import-list-url'),
@@ -60,9 +65,17 @@
                 pending: 0
             },
             syncOverview: null,
+            leetcodeReviewSummary: {
+                dueCount: 0,
+                recentDueTitle: '',
+                recentDueUrl: ''
+            },
             problemQuery: '',
             problemStatusFilter: 'all',
             problemPage: 1,
+            deepmlQuery: '',
+            deepmlStatusFilter: 'all',
+            deepmlPage: 1,
             listQuery: '',
             listStatusFilter: 'all',
             listPages: {},

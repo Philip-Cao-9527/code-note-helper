@@ -1,6 +1,6 @@
 ﻿/**
  * Popup 概览渲染
- * 版本：1.0.81
+ * 版本：1.1.0
  */
 
 (function () {
@@ -8,6 +8,15 @@
 
     const popupModules = window.NoteHelperPopupModules = window.NoteHelperPopupModules || {};
     const stateUtils = popupModules.state || {};
+    const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+    function getTodayLabel() {
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const weekday = WEEKDAY_LABELS[now.getDay()] || '';
+        return `${month}-${day} ${weekday}`;
+    }
 
     function renderOverview(elements, state) {
         const cards = [
@@ -29,7 +38,7 @@
             {
                 label: '题单已完成题目',
                 value: state.listSummary.completed,
-                note: '题单中只要触发过插件行为的题目都会计入这里，跨题单重复题目按一次统计。'
+                note: '题单中只要触发过插件行为的题目都会计入这里'
             }
         ];
 
@@ -42,6 +51,32 @@
               </div>
             `;
         }).join('');
+
+        if (elements.overviewReviewCard) {
+            const reviewSummary = state.leetcodeReviewSummary || {};
+            const dueCount = Number(reviewSummary.dueCount || 0);
+            const recentTitle = String(reviewSummary.recentDueTitle || '').trim();
+            const reviewCardClass = dueCount > 0 ? 'review-summary-card has-due' : 'review-summary-card is-empty';
+            const todayLabel = getTodayLabel();
+
+            elements.overviewReviewCard.innerHTML = `
+              <div class="${reviewCardClass}">
+                <div class="review-summary-top">
+                  <div class="review-summary-title">今日待复习</div>
+                  <div class="review-summary-date">${stateUtils.escapeHtml(todayLabel)}</div>
+                </div>
+                <div class="review-summary-ring" aria-hidden="true">
+                  <div class="review-summary-ring-inner">
+                    <span class="review-summary-count">${stateUtils.escapeHtml(String(dueCount))}</span>
+                    <span class="review-summary-count-unit">题</span>
+                  </div>
+                </div>
+                <div class="review-summary-main">${dueCount > 0 ? `今天有 ${dueCount} 道题需要复习` : '今天没有待复习题目'}</div>
+                <div class="review-summary-sub">${recentTitle ? `最近一题：${stateUtils.escapeHtml(recentTitle)}` : '最近一题：暂无'}</div>
+                <button class="review-summary-btn" type="button" data-switch-view="leetcode-view">去力扣题目查看</button>
+              </div>
+            `;
+        }
 
         if (elements.footerNote) {
             elements.footerNote.innerHTML = '在 <span class="footer-note-key">设置与备份</span> 中管理备份和 API 配置';

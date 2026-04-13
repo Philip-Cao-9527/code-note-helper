@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录共享仓库组装入口
- * 版本：1.0.83
+ * 版本：1.1.0
  */
 
 (function () {
@@ -22,13 +22,18 @@
             ACTION_LABELS: constants.ACTION_LABELS,
             PAGE_SIZE: constants.PAGE_SIZE,
             extractProblemIdentity: records.extractProblemIdentity,
+            isLeetcodeSite: records.isLeetcodeSite,
+            isDeepLearningSite: records.isDeepLearningSite,
             getActionLabel: records.getActionLabel,
             getRecordStage: records.getRecordStage,
+            getRecordReviewMeta: records.getRecordReviewMeta,
             getProblemRecords: records.getProblemRecords,
             getProblemRecordSummary: records.getProblemRecordSummary,
             getSortedProblemRecords: records.getSortedProblemRecords,
             getProblemRecordByUrl: records.getProblemRecordByUrl,
+            getLeetcodeReviewSummary: records.getLeetcodeReviewSummary,
             trackProblemAction: records.trackProblemAction,
+            rateProblemMemory: records.rateProblemMemory,
             deleteProblemRecord: records.deleteProblemRecord,
             saveProblemNote: records.saveProblemNote,
             getProblemLists: lists.getProblemLists,

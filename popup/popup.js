@@ -1,6 +1,6 @@
 ﻿/**
  * Popup 入口脚本
- * 版本：1.0.81
+ * 版本：1.1.0
  */
 
 (function () {
@@ -43,14 +43,21 @@
         if (elements.listsSearchInput) {
             elements.listsSearchInput.value = '';
         }
+        if (elements.deepmlSearchInput) {
+            elements.deepmlSearchInput.value = '';
+        }
         if (elements.problemsStatusFilter) {
             elements.problemsStatusFilter.value = 'all';
+        }
+        if (elements.deepmlStatusFilter) {
+            elements.deepmlStatusFilter.value = 'all';
         }
         if (elements.listsStatusFilter) {
             elements.listsStatusFilter.value = 'all';
         }
 
         state.problemStatusFilter = 'all';
+        state.deepmlStatusFilter = 'all';
         state.listStatusFilter = 'all';
 
         let schedulerStarted = false;
@@ -87,7 +94,8 @@
         function renderAll() {
             syncActiveView();
             renderOverview.renderOverview(elements, state);
-            renderProblems.renderProblems(elements, state, store);
+            renderProblems.renderLeetcodeProblems(elements, state, store);
+            renderProblems.renderDeepmlProblems(elements, state, store);
             renderLists.renderLists(elements, state);
         }
 
@@ -231,12 +239,19 @@
         }
 
         async function refreshData() {
-            const [records, recordSummary, lists, listSummary, syncOverview] = await Promise.all([
+            const [records, recordSummary, lists, listSummary, syncOverview, leetcodeReviewSummary] = await Promise.all([
                 store.getSortedProblemRecords(),
                 store.getProblemRecordSummary(),
                 store.getProblemListsWithProgress(),
                 store.getProblemListSummary(),
-                store.getSyncOverview()
+                store.getSyncOverview(),
+                typeof store.getLeetcodeReviewSummary === 'function'
+                    ? store.getLeetcodeReviewSummary()
+                    : Promise.resolve({
+                        dueCount: 0,
+                        recentDueTitle: '',
+                        recentDueUrl: ''
+                    })
             ]);
 
             state.records = records;
@@ -244,6 +259,11 @@
             state.lists = lists;
             state.listSummary = listSummary;
             state.syncOverview = syncOverview;
+            state.leetcodeReviewSummary = leetcodeReviewSummary || {
+                dueCount: 0,
+                recentDueTitle: '',
+                recentDueUrl: ''
+            };
             normalizeListState();
             await syncAutoScheduler();
             renderAll();

@@ -17,6 +17,7 @@
         noteSubtitle: document.getElementById('note-subtitle'),
         noteEditor: document.getElementById('note-editor'),
         notePreview: document.getElementById('note-preview'),
+        previewToc: document.getElementById('preview-toc'),
         saveStatus: document.getElementById('save-status'),
         saveToast: document.getElementById('save-toast'),
         saveNoteBtn: document.getElementById('save-note-btn'),
@@ -36,6 +37,8 @@
         notebookTitle: '题目笔记本',
         notebookEntries: [],
         activeKey: '',
+        previewTocEntries: [],
+        activeTocTarget: '',
         query: '',
         statusFilter: 'all',
         sortMode: 'updated_desc'
@@ -126,6 +129,48 @@
             .replace(/-+/g, '-')
             .replace(/^-+|-+$/g, '')
             .toLowerCase();
+    }
+
+    function buildTocAnchorSlug(text, index) {
+        const normalized = String(text || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^\w\u4e00-\u9fa5\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        if (normalized) return normalized;
+        return `section-${index + 1}`;
+    }
+
+    function collectPreviewTocEntries(previewElement) {
+        if (!previewElement || typeof previewElement.querySelectorAll !== 'function') {
+            return [];
+        }
+
+        const headings = Array.from(previewElement.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+        if (!headings.length) return [];
+
+        const slugCounter = new Map();
+        return headings.reduce((entries, heading, index) => {
+            const level = Number(String(heading.tagName || '').replace(/[^\d]/g, '')) || 1;
+            const text = String(heading.textContent || '').trim();
+            if (!text) return entries;
+
+            const slugBase = buildTocAnchorSlug(text, index);
+            const slugCount = (slugCounter.get(slugBase) || 0) + 1;
+            slugCounter.set(slugBase, slugCount);
+            const slug = slugCount > 1 ? `${slugBase}-${slugCount}` : slugBase;
+            const targetId = `note-heading-${slug}`;
+            heading.id = targetId;
+
+            entries.push({
+                targetId,
+                level: Math.min(Math.max(level, 1), 6),
+                text
+            });
+            return entries;
+        }, []);
     }
 
     function formatExportStamp() {
@@ -259,6 +304,7 @@
         if (elements.toggleLayoutBtn) {
             elements.toggleLayoutBtn.textContent = getLayoutButtonLabel(layoutMode);
         }
+        applyPreviewTocVisibility();
     }
 
     function cycleLayoutMode() {
@@ -285,6 +331,56 @@
         }
     }
 
+    function applyPreviewTocVisibility() {
+        const canShow = state.layoutMode === 'preview-only' && state.previewTocEntries.length > 0;
+        if (typeof document !== 'undefined' && document && document.body && document.body.classList) {
+            document.body.classList.toggle('show-preview-toc', canShow);
+        }
+        if (elements.previewToc) {
+            elements.previewToc.hidden = !canShow;
+        }
+    }
+
+    function setActiveTocTarget(targetId) {
+        state.activeTocTarget = String(targetId || '').trim();
+        if (!elements.previewToc || typeof elements.previewToc.querySelectorAll !== 'function') return;
+        const buttons = Array.from(elements.previewToc.querySelectorAll('[data-toc-target]'));
+        buttons.forEach((button) => {
+            const currentTarget = String(button.getAttribute('data-toc-target') || '').trim();
+            button.classList.toggle('active', Boolean(state.activeTocTarget) && currentTarget === state.activeTocTarget);
+        });
+    }
+
+    function renderPreviewToc() {
+        if (!elements.previewToc) return;
+
+        const entries = collectPreviewTocEntries(elements.notePreview);
+        state.previewTocEntries = entries;
+        if (!entries.length) {
+            elements.previewToc.innerHTML = '';
+            state.activeTocTarget = '';
+            applyPreviewTocVisibility();
+            return;
+        }
+
+        elements.previewToc.innerHTML = `
+          <div class="preview-toc-title">目录</div>
+          <div class="preview-toc-list">
+            ${entries.map((entry) => `
+              <button
+                type="button"
+                class="preview-toc-item level-${entry.level}"
+                data-toc-target="${escapeHtml(entry.targetId)}"
+                title="${escapeHtml(entry.text)}">
+                <span class="preview-toc-text">${escapeHtml(entry.text)}</span>
+              </button>
+            `).join('')}
+          </div>
+        `;
+        setActiveTocTarget(entries[0].targetId);
+        applyPreviewTocVisibility();
+    }
+
     function renderPreview() {
         const markdown = elements.noteEditor ? elements.noteEditor.value : '';
         const previewMarkdown = normalizeDisplayMathForPreview(markdown);
@@ -300,6 +396,7 @@
             elements.notePreview.innerHTML = `<pre>${escapeHtml(previewMarkdown)}</pre>`;
         }
         renderMath();
+        renderPreviewToc();
     }
 
     function bindBeforeUnloadGuard() {
@@ -650,6 +747,12 @@
             if (elements.noteSubtitle) elements.noteSubtitle.textContent = '请从左侧笔记本选择题目';
             if (elements.noteEditor) elements.noteEditor.value = '';
             if (elements.notePreview) elements.notePreview.innerHTML = '<div class="notebook-empty">暂无可渲染内容</div>';
+            state.previewTocEntries = [];
+            state.activeTocTarget = '';
+            if (elements.previewToc) {
+                elements.previewToc.innerHTML = '';
+            }
+            applyPreviewTocVisibility();
             return;
         }
 
@@ -829,6 +932,24 @@
             });
         }
 
+        if (elements.previewToc) {
+            elements.previewToc.addEventListener('click', (event) => {
+                const target = event.target.closest('[data-toc-target]');
+                if (!target || !elements.notePreview) return;
+                const tocTarget = String(target.getAttribute('data-toc-target') || '').trim();
+                if (!tocTarget) return;
+                const selector = `#${escapeSelectorValue(tocTarget)}`;
+                const heading = elements.notePreview.querySelector(selector);
+                if (!heading || typeof heading.scrollIntoView !== 'function') return;
+                heading.scrollIntoView({
+                    block: 'start',
+                    inline: 'nearest',
+                    behavior: 'smooth'
+                });
+                setActiveTocTarget(tocTarget);
+            });
+        }
+
         if (elements.notebookSearchInput) {
             elements.notebookSearchInput.addEventListener('input', () => {
                 updateViewStateFromControls();
@@ -886,6 +1007,8 @@
         getDefaultViewState,
         hasSavedNote,
         normalizeDisplayMathForPreview,
+        buildTocAnchorSlug,
+        collectPreviewTocEntries,
         shouldBlockNavigationByDirty,
         sortEntriesByUpdatedAt,
         getVisibleEntriesByState,

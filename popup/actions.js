@@ -1,6 +1,6 @@
 /**
  * Popup 交互动作
- * 版本：1.0.67
+ * 版本：1.1.0
  */
 
 (function () {
@@ -53,6 +53,16 @@
 
     async function openSettingsPage() {
         await chrome.runtime.openOptionsPage();
+    }
+
+    async function promptReviewRating() {
+        const text = window.prompt('请选择记忆状态：\n1 = 很难想起\n2 = 有点吃力\n3 = 基本记得\n4 = 很熟练', '3');
+        if (text === null) return 0;
+        const rating = Number(String(text).trim());
+        if (!Number.isInteger(rating) || rating < 1 || rating > 4) {
+            return -1;
+        }
+        return rating;
     }
 
     function createConfirmController(elements) {
@@ -192,6 +202,22 @@
             });
         }
 
+        if (elements.deepmlSearchInput) {
+            elements.deepmlSearchInput.addEventListener('input', () => {
+                state.deepmlQuery = elements.deepmlSearchInput.value;
+                state.deepmlPage = 1;
+                renderAll();
+            });
+        }
+
+        if (elements.deepmlStatusFilter) {
+            elements.deepmlStatusFilter.addEventListener('change', () => {
+                state.deepmlStatusFilter = elements.deepmlStatusFilter.value || 'all';
+                state.deepmlPage = 1;
+                renderAll();
+            });
+        }
+
         if (elements.listsSearchInput) {
             elements.listsSearchInput.addEventListener('input', () => {
                 state.listQuery = elements.listsSearchInput.value;
@@ -256,6 +282,12 @@
                 return;
             }
 
+            if (scope === 'deepml') {
+                state.deepmlPage = action === 'next' ? state.deepmlPage + 1 : state.deepmlPage - 1;
+                renderAll();
+                return;
+            }
+
             if (scope.startsWith('list:')) {
                 const listId = scope.slice(5);
                 const currentPage = state.listPages[listId] || 1;
@@ -307,6 +339,55 @@
                 return;
             }
 
+            const switchViewTarget = target.closest('[data-switch-view]');
+            if (switchViewTarget) {
+                const nextView = String(switchViewTarget.getAttribute('data-switch-view') || '').trim();
+                if (nextView) {
+                    state.activeView = nextView;
+                    renderAll();
+                }
+                return;
+            }
+
+            const reviewTarget = target.closest('[data-review-record]');
+            if (reviewTarget) {
+                const recordId = String(reviewTarget.getAttribute('data-review-record') || '').trim();
+                const record = state.records.find((item) => String(item && item.id || '') === recordId);
+                if (!record) {
+                    showToast('未找到题目记录，请刷新后重试');
+                    return;
+                }
+
+                const reviewMeta = typeof store.getRecordReviewMeta === 'function'
+                    ? store.getRecordReviewMeta(record)
+                    : null;
+                if (!reviewMeta || !reviewMeta.enabled || !reviewMeta.isLeetcode) {
+                    showToast('请先在题目详情页加入复习计划');
+                    return;
+                }
+
+                const rating = await promptReviewRating();
+                if (rating === 0) return;
+                if (rating < 0) {
+                    showToast('请输入 1-4 的评分');
+                    return;
+                }
+
+                try {
+                    await store.rateProblemMemory({
+                        url: record.url || record.baseUrl || '',
+                        title: record.title || record.problemKey || '未命名题目',
+                        rating
+                    });
+                    await refreshData();
+                    showToast('记忆状态已更新');
+                } catch (error) {
+                    console.error('[Popup] 快捷复习失败：', error);
+                    showToast('更新失败，请稍后重试');
+                }
+                return;
+            }
+
             const deleteRecordTarget = target.closest('[data-delete-record]');
             if (deleteRecordTarget) {
                 const recordId = deleteRecordTarget.getAttribute('data-delete-record');
@@ -345,7 +426,7 @@
             }
         }
 
-        [elements.problemsList, elements.problemsPagination, elements.problemLists].forEach((container) => {
+        [elements.overviewReviewCard, elements.problemsList, elements.problemsPagination, elements.deepmlList, elements.deepmlPagination, elements.problemLists].forEach((container) => {
             if (!container) return;
             container.addEventListener('click', (event) => {
                 handleActionClick(event.target);

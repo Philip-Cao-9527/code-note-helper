@@ -1,6 +1,6 @@
 /**
  * 问题数据常量定义
- * 版本：1.0.83
+ * 版本：1.1.0
  */
 
 (function () {
@@ -41,7 +41,8 @@
             result_copied: '已复制结果',
             note_saved: '已保存笔记',
             manual_added: '已手动添加题目',
-            submission_passed: '提交通过自动入库'
+            submission_passed: '提交通过自动入库',
+            review_rated: '已更新记忆状态'
         },
         STAGE_PRIORITY: {
             none: 0,

@@ -7,7 +7,7 @@
 一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记，轻松驾驭超长对话<br/>让刷过的每一道题都沉淀为技术资产
 
 
-![Version](https://img.shields.io/badge/version-1.0.90-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
+![Version](https://img.shields.io/badge/version-1.1.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen)
 
 [功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
@@ -62,6 +62,8 @@
 - **高质量题解优先推荐**：自动识别灵茶山艾府等大佬的题解并置顶作为推荐方案，帮你直接学习最优解法。
 - **三种灵活的使用方式**：复制 Prompt 粘贴到任意 AI 对话、直连 API 在页面内直接生成、或一键跳转到 ChatGPT / Claude / Gemini / DeepSeek。
 - **大语言模型 API 流式输出**：配置好 API 后，可在题目页面内直接生成笔记，支持实时流式响应，**所见即所得**。
+- **力扣复习入口复用原按钮**：LeetCode 题目页右下角 📝 按钮可直接选择“记忆状态”，首次评分会自动加入题目清单并进入复习计划。
+- **Popup 复习看板（首版）**：Popup 首页新增“今日待复习”轻摘要；力扣页显示“下次复习时间”，当天待复习题会自动置顶并高亮。
 - **题单进度追踪**：支持导入 Hot100、面试经典 150、灵神题单，**自动追踪做题状态**，全部完成时还有庆祝动画 🎉。
 - **独立笔记本**：内置双栏 Markdown 编辑器，支持实时预览、公式渲染与一键导出，**所有笔记集中管理**。
 - **灵活易用**：esc关闭笔记生成页面，拖动笔记生成页面边缘调整页面大小，拖动笔记以及咖啡按钮调整位置

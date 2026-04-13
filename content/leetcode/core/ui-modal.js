@@ -1,6 +1,6 @@
 ﻿/**
  * LeetCode 笔记助手 UI 模块
- * 版本：1.0.90
+ * 版本：1.1.0
  */
 
 (function () {
@@ -39,6 +39,7 @@
     const trackedSubmissionCache = new Set();
     const trackingSubmissionInFlight = new Set();
     const submitIntentMemoryCache = new Map();
+    let reviewReminderTimer = null;
 
     const ICON_DRAG_LONG_PRESS_MS = 500;
     const ICON_DRAG_MOVE_THRESHOLD_PX = 12;
@@ -356,6 +357,102 @@
         return available ? store : null;
     }
 
+    function isLeetcodeProblemHost() {
+        const host = String(window.location.hostname || '').toLowerCase();
+        return host.includes('leetcode.cn') || host.includes('leetcode.com');
+    }
+
+    function setReviewReminderState(enabled) {
+        if (!btn) return;
+        if (enabled) {
+            btn.classList.add('review-remind');
+            btn.title = '提交通过，点击记录记忆状态';
+            return;
+        }
+        btn.classList.remove('review-remind');
+        btn.title = '点击生成刷题笔记 Prompt';
+    }
+
+    function triggerReviewReminder() {
+        setReviewReminderState(true);
+        if (reviewReminderTimer) {
+            clearTimeout(reviewReminderTimer);
+            reviewReminderTimer = null;
+        }
+        reviewReminderTimer = setTimeout(() => {
+            setReviewReminderState(false);
+            reviewReminderTimer = null;
+        }, 12000);
+        showToast('✅ 提交通过，点击右下角按钮记录记忆状态', 3200);
+    }
+
+    function buildReviewDialogOption(option) {
+        return `
+            <button class="nh-review-option" type="button" data-rating="${option.rating}">
+                <span class="nh-review-label">${option.label}</span>
+                <span class="nh-review-preview">预计下次复习：${option.preview}</span>
+            </button>
+        `;
+    }
+
+    function showMemoryRatingDialog() {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'nh-review-overlay';
+            overlay.innerHTML = `
+                <div class="nh-review-dialog" role="dialog" aria-modal="true" aria-label="记忆状态评分">
+                    <button class="nh-review-close" type="button" aria-label="关闭">×</button>
+                    <div class="nh-review-title">这题现在记得怎么样？</div>
+                    <div class="nh-review-options">
+                        ${buildReviewDialogOption({ rating: 1, label: '很难想起', preview: '5天后' })}
+                        ${buildReviewDialogOption({ rating: 2, label: '有点吃力', preview: '10天后' })}
+                        ${buildReviewDialogOption({ rating: 3, label: '基本记得', preview: '18天后' })}
+                        ${buildReviewDialogOption({ rating: 4, label: '很熟练', preview: '36天后' })}
+                    </div>
+                    <div class="nh-review-note">说明：若未入清单，将自动加入并记录</div>
+                </div>
+            `;
+
+            const closeDialog = (result) => {
+                overlay.remove();
+                resolve(result);
+            };
+
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    closeDialog(null);
+                }
+            });
+            overlay.querySelector('.nh-review-close')?.addEventListener('click', () => closeDialog(null));
+            overlay.querySelectorAll('.nh-review-option').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const rating = Number(button.getAttribute('data-rating') || 0);
+                    closeDialog(rating);
+                });
+            });
+
+            document.body.appendChild(overlay);
+        });
+    }
+
+    function syncManualAddSection() {
+        const label = document.getElementById('manual-add-label');
+        const button = document.getElementById('btn-manual-add');
+        const note = document.getElementById('manual-add-note');
+        if (!label || !button || !note) return;
+
+        if (isLeetcodeProblemHost()) {
+            label.textContent = '复习入口';
+            button.textContent = '🧠 加入复习并评分';
+            note.textContent = '选择记忆状态后，若题目未入清单会自动加入并进入复习';
+            return;
+        }
+
+        label.textContent = '添加题目';
+        button.textContent = '➕ 添加题目';
+        note.textContent = '将当前题目快速加入插件记录，无需先执行生成操作';
+    }
+
     function getCurrentProblemRecordTitle() {
         if (!modal) return '';
         return modal.dataset.problemTitle ||
@@ -599,11 +696,13 @@
         try {
             const existingRecord = await getExistingProblemRecordForCurrentUrl();
             if (existingRecord) {
+                markSubmissionTracked(trackKey);
                 clearSubmitIntent(intentState.intentKey);
                 console.info('[Note Helper] 检测到题目已有记录，跳过提交通过自动入库:', {
                     trackKey,
                     problemId: existingRecord.id
                 });
+                triggerReviewReminder();
                 return false;
             }
 
@@ -616,7 +715,8 @@
             if (!actionResult) return false;
             markSubmissionTracked(trackKey);
             clearSubmitIntent(intentState.intentKey);
-            showToast('✅ 检测到提交通过，已自动加入题目记录', 3200);
+            showToast('✅ 检测到提交通过，已自动加入题目记录', 2600);
+            triggerReviewReminder();
             return true;
         } finally {
             trackingSubmissionInFlight.delete(trackKey);
@@ -1109,6 +1209,7 @@
         btn.innerText = '📝';
         btn.title = "点击生成刷题笔记 Prompt";
         document.body.appendChild(btn);
+        setReviewReminderState(false);
 
         // 创建 Toast
         toast = document.createElement('div');
@@ -1199,9 +1300,9 @@
         </div>
 
         <div class="form-group">
-            <label for="btn-manual-add">添加题目</label>
+            <label id="manual-add-label" for="btn-manual-add">添加题目</label>
             <button class="btn btn-secondary" id="btn-manual-add" type="button" style="width:100%;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;box-shadow:0 1px 2px rgba(15,23,42,0.04)">➕ 添加题目</button>
-            <div style="font-size:12px;color:#666;margin-top:4px">将当前题目快速加入插件记录，无需先执行生成操作</div>
+            <div id="manual-add-note" style="font-size:12px;color:#666;margin-top:4px">将当前题目快速加入插件记录，无需先执行生成操作</div>
         </div>
 
         <div id="api-settings-panel" class="api-settings">
@@ -1354,6 +1455,7 @@
             const conf = adapter.config;
 
             modal.style.display = 'block';
+            syncManualAddSection();
             document.getElementById('p-official').value = "⏳ 正在获取参考题解...";
 
             let contentText = "";
@@ -1492,6 +1594,44 @@
         }
 
         document.getElementById('btn-manual-add').onclick = async () => {
+            const store = getProblemDataStore();
+            if (!store) {
+                showToast('⚠️ 本地记录模块未加载', 2800);
+                return;
+            }
+
+            if (isLeetcodeProblemHost() && typeof store.rateProblemMemory === 'function') {
+                const rating = await showMemoryRatingDialog();
+                if (!rating) {
+                    return;
+                }
+
+                try {
+                    const result = await store.rateProblemMemory({
+                        url: window.location.href,
+                        title: getCurrentProblemRecordTitle(),
+                        rating
+                    });
+
+                    if (!result || result.success === false) {
+                        showToast('⚠️ 当前页面暂不支持复习评分', 2800);
+                        return;
+                    }
+
+                    maybeCelebrateFromActionResult(result);
+                    setReviewReminderState(false);
+                    if (result.isNewRecord) {
+                        showToast('✅ 已加入力扣题目清单并记录记忆状态', 3000);
+                    } else {
+                        showToast('✅ 记忆状态已更新', 2400);
+                    }
+                } catch (error) {
+                    console.warn('[Note Helper] 复习评分失败:', error);
+                    showToast('⚠️ 记录记忆状态失败，请稍后重试', 3200);
+                }
+                return;
+            }
+
             const actionResult = await trackCurrentProblemAction('manual_added', {
                 title: getCurrentProblemRecordTitle()
             });

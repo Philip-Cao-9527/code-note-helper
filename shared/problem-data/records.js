@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录模块
- * 版本：1.0.82
+ * 版本：1.1.0
  */
 
 (function () {
@@ -15,6 +15,23 @@
     const STAGE_LABELS = constants.STAGE_LABELS;
     const ACTION_LABELS = constants.ACTION_LABELS;
     const STAGE_PRIORITY = constants.STAGE_PRIORITY;
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const LEETCODE_SITES = new Set(['leetcode.cn', 'leetcode.com']);
+    const DEEP_LEARNING_SITES = new Set(['deep-ml.com', 'duoan-torchcode.hf.space']);
+    const REVIEW_INTERVAL_DAY_MAP = {
+        1: 5,
+        2: 10,
+        3: 18,
+        4: 36
+    };
+    const REVIEW_RATING_LABELS = {
+        1: '很难想起',
+        2: '有点吃力',
+        3: '基本记得',
+        4: '很熟练'
+    };
+    const FORGETTING_CURVE_FACTOR = 19 / 81;
+    const FORGETTING_CURVE_DECAY = -0.5;
 
     function parseTorchCodeNotebookPath(pathname) {
         const matchers = [
@@ -32,6 +49,200 @@
         }
 
         return '';
+    }
+
+    function isLeetcodeSite(site) {
+        return LEETCODE_SITES.has(String(site || '').trim().toLowerCase());
+    }
+
+    function isDeepLearningSite(site) {
+        return DEEP_LEARNING_SITES.has(String(site || '').trim().toLowerCase());
+    }
+
+    function getLocalDateKeyFromTime(input) {
+        const date = input instanceof Date ? input : new Date(input || Date.now());
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function getLocalDayEndTimestamp(input) {
+        const date = input instanceof Date ? new Date(input.getTime()) : new Date(input || Date.now());
+        if (Number.isNaN(date.getTime())) return Date.now();
+        date.setHours(23, 59, 59, 999);
+        return date.getTime();
+    }
+
+    function normalizeIso(input) {
+        if (!input) return null;
+        const date = new Date(input);
+        if (Number.isNaN(date.getTime())) return null;
+        return date.toISOString();
+    }
+
+    function clampNumber(value, min, max) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return min;
+        return Math.min(max, Math.max(min, number));
+    }
+
+    function parseRating(rating) {
+        const number = Number(rating);
+        if (!Number.isInteger(number)) return 0;
+        if (number < 1 || number > 4) return 0;
+        return number;
+    }
+
+    function buildDefaultReviewState() {
+        return {
+            enabled: false,
+            algorithm: 'fsrs',
+            lastRating: 0,
+            lastRatedAt: null,
+            nextReviewAt: null,
+            reviewedToday: false,
+            reviewedDateKey: '',
+            fsrsState: null
+        };
+    }
+
+    function normalizeReviewState(review, nowTime = Date.now()) {
+        if (!review || typeof review !== 'object') {
+            return buildDefaultReviewState();
+        }
+
+        const todayKey = getLocalDateKeyFromTime(nowTime);
+        const merged = {
+            ...buildDefaultReviewState(),
+            ...review
+        };
+
+        merged.algorithm = merged.algorithm || 'fsrs';
+        merged.lastRating = parseRating(merged.lastRating);
+        merged.lastRatedAt = normalizeIso(merged.lastRatedAt);
+        merged.nextReviewAt = normalizeIso(merged.nextReviewAt);
+        merged.reviewedDateKey = String(merged.reviewedDateKey || '').trim();
+
+        if (merged.fsrsState && typeof merged.fsrsState === 'object') {
+            const nextReviewNumber = Number(merged.fsrsState.nextReview || 0);
+            const lastReviewNumber = Number(merged.fsrsState.lastReview || 0);
+            merged.fsrsState = {
+                ...merged.fsrsState,
+                difficulty: clampNumber(merged.fsrsState.difficulty || 5.5, 1, 10),
+                stability: Math.max(1, Number(merged.fsrsState.stability || 1)),
+                state: Number(merged.fsrsState.state || 2),
+                reviewCount: Math.max(0, Number(merged.fsrsState.reviewCount || 0)),
+                lapses: Math.max(0, Number(merged.fsrsState.lapses || 0)),
+                quality: parseRating(merged.fsrsState.quality || merged.lastRating || 0),
+                lastReview: Number.isFinite(lastReviewNumber) ? lastReviewNumber : 0,
+                nextReview: Number.isFinite(nextReviewNumber) ? nextReviewNumber : 0
+            };
+        } else {
+            merged.fsrsState = null;
+        }
+
+        if (!merged.reviewedDateKey && merged.lastRatedAt) {
+            merged.reviewedDateKey = getLocalDateKeyFromTime(merged.lastRatedAt);
+        }
+
+        merged.reviewedToday = merged.reviewedDateKey === todayKey && Boolean(merged.reviewedToday);
+        merged.enabled = Boolean(merged.enabled) && Boolean(merged.nextReviewAt);
+
+        return merged;
+    }
+
+    function calculateElapsedDays(lastReviewTime, nowTime = Date.now()) {
+        const left = Number(lastReviewTime || 0);
+        const right = Number(nowTime || Date.now());
+        if (!Number.isFinite(left) || !Number.isFinite(right) || right <= left) return 0;
+        return Math.max(0, (right - left) / DAY_MS);
+    }
+
+    function forgettingCurve(elapsedDays, stability) {
+        const elapsed = Math.max(0, Number(elapsedDays || 0));
+        const safeStability = Math.max(0.1, Number(stability || 0.1));
+        const retention = Math.pow(1 + FORGETTING_CURVE_FACTOR * (elapsed / (9 * safeStability)), FORGETTING_CURVE_DECAY);
+        if (!Number.isFinite(retention)) return 0;
+        return Math.max(0, Math.min(1, retention));
+    }
+
+    function getRecordReviewMeta(record, nowTime = Date.now()) {
+        const review = normalizeReviewState(record && record.review, nowTime);
+        const site = String(record && record.site || '').trim().toLowerCase();
+        const isLeetcode = isLeetcodeSite(site);
+        const nextReviewIso = review.nextReviewAt;
+        const nextReviewTime = nextReviewIso ? new Date(nextReviewIso).getTime() : 0;
+        const hasNextReview = Number.isFinite(nextReviewTime) && nextReviewTime > 0;
+        const dueByToday = hasNextReview && nextReviewTime <= getLocalDayEndTimestamp(nowTime);
+        const dueToday = Boolean(review.enabled && isLeetcode && dueByToday && !review.reviewedToday);
+        const fsrsState = review.fsrsState || null;
+        const recallProbability = fsrsState
+            ? forgettingCurve(calculateElapsedDays(fsrsState.lastReview, nowTime), fsrsState.stability)
+            : 1;
+
+        return {
+            enabled: Boolean(review.enabled),
+            review,
+            isLeetcode,
+            dueToday,
+            nextReviewTime,
+            recallProbability,
+            ratingLabel: REVIEW_RATING_LABELS[review.lastRating] || '未设置'
+        };
+    }
+
+    function buildNextReviewState(record, rating, nowTime = Date.now()) {
+        const safeRating = parseRating(rating);
+        if (!safeRating) {
+            throw new Error('记忆状态评分无效');
+        }
+
+        const nowDate = new Date(nowTime);
+        const nowIso = nowDate.toISOString();
+        const todayKey = getLocalDateKeyFromTime(nowDate);
+        const previousReview = normalizeReviewState(record && record.review, nowTime);
+        const previousFsrs = previousReview.fsrsState || {};
+        const previousReviewCount = Math.max(0, Number(previousFsrs.reviewCount || 0));
+        const previousStability = Math.max(1, Number(previousFsrs.stability || 0));
+        const baseInterval = REVIEW_INTERVAL_DAY_MAP[safeRating] || 10;
+
+        let nextIntervalDays = baseInterval;
+        if (previousReviewCount > 0 && previousStability > 0) {
+            const retentionFactor = safeRating === 1 ? 0.6 : safeRating === 2 ? 0.95 : safeRating === 3 ? 1.25 : 1.7;
+            nextIntervalDays = Math.max(1, Math.round(previousStability * retentionFactor));
+        }
+
+        const baseDifficulty = previousReviewCount > 0
+            ? clampNumber(previousFsrs.difficulty || 5.5, 1, 10)
+            : clampNumber(7 - safeRating * 1.2, 1, 10);
+        const difficultyDelta = safeRating === 1 ? 0.55 : safeRating === 2 ? 0.2 : safeRating === 3 ? -0.1 : -0.35;
+        const nextDifficulty = clampNumber(baseDifficulty + difficultyDelta, 1, 10);
+        const nextReviewTime = nowTime + nextIntervalDays * DAY_MS;
+        const nextReviewIso = new Date(nextReviewTime).toISOString();
+        const nextReviewCount = previousReviewCount + 1;
+        const nextLapses = Math.max(0, Number(previousFsrs.lapses || 0)) + (safeRating === 1 ? 1 : 0);
+
+        return {
+            enabled: true,
+            algorithm: 'fsrs',
+            lastRating: safeRating,
+            lastRatedAt: nowIso,
+            nextReviewAt: nextReviewIso,
+            reviewedToday: true,
+            reviewedDateKey: todayKey,
+            fsrsState: {
+                difficulty: nextDifficulty,
+                stability: Math.max(1, nextIntervalDays),
+                state: 2,
+                lastReview: nowTime,
+                nextReview: nextReviewTime,
+                reviewCount: nextReviewCount,
+                lapses: nextLapses,
+                quality: safeRating
+            }
+        };
     }
 
     function extractProblemIdentity(url) {
@@ -185,7 +396,8 @@
             manualAddedAt: null,
             submissionPassedCount: 0,
             submissionPassedAt: null,
-            noteContent: ''
+            noteContent: '',
+            review: buildDefaultReviewState()
         };
     }
 
@@ -350,6 +562,7 @@
             manualAddedAt: record.manualAddedAt,
             submissionPassedCount: record.submissionPassedCount || 0,
             submissionPassedAt: record.submissionPassedAt,
+            review: normalizeReviewState(record.review),
             hasNoteContent: hasSavedNoteContent(record)
         };
     }
@@ -357,12 +570,13 @@
     function inflateRecordFromDigest(digest) {
         return {
             ...digest,
-            noteContent: ''
+            noteContent: '',
+            review: normalizeReviewState(digest && digest.review)
         };
     }
 
     async function trackProblemAction(options) {
-        const { url, title, actionType, noteContent } = options || {};
+        const { url, title, actionType, noteContent, rating } = options || {};
         const identity = extractProblemIdentity(url);
         if (!identity || !identity.supported) {
             console.warn('[ProblemData] 当前地址不支持记录：', url);
@@ -374,7 +588,9 @@
         const tombstones = await syncCore.getSyncTombstones();
         const beforeCompletedCanonicalSet = buildCompletedCanonicalSet(records);
         const now = new Date().toISOString();
+        const nowTime = new Date(now).getTime();
         const recordId = buildRecordId(identity);
+        const hadRecord = Boolean(records[recordId]);
         const previous = records[recordId] || createEmptyRecord(identity, title, now);
         const nextRecord = {
             ...previous,
@@ -387,7 +603,8 @@
             baseUrl: identity.baseUrl,
             updatedAt: now,
             lastActionType: actionType,
-            lastActionAt: now
+            lastActionAt: now,
+            review: normalizeReviewState(previous.review, nowTime)
         };
 
         if (actionType === 'prompt_copied') {
@@ -409,6 +626,8 @@
         } else if (actionType === 'submission_passed') {
             nextRecord.submissionPassedCount = Number(nextRecord.submissionPassedCount || 0) + 1;
             nextRecord.submissionPassedAt = now;
+        } else if (actionType === 'review_rated') {
+            nextRecord.review = buildNextReviewState(nextRecord, rating, nowTime);
         }
 
         records[recordId] = nextRecord;
@@ -431,6 +650,7 @@
         });
         return {
             ...nextRecord,
+            isNewRecord: !hadRecord,
             celebration: newlyCompletedLists.length ? {
                 triggered: true,
                 completedAt: now,
@@ -488,22 +708,88 @@
         });
     }
 
+    async function rateProblemMemory(options) {
+        const { url, title, rating } = options || {};
+        const identity = extractProblemIdentity(url);
+        if (!identity || !identity.supported) {
+            return {
+                success: false,
+                reason: 'unsupported'
+            };
+        }
+        if (!isLeetcodeSite(identity.site)) {
+            return {
+                success: false,
+                reason: 'site_not_supported'
+            };
+        }
+
+        const safeRating = parseRating(rating);
+        if (!safeRating) {
+            throw new Error('记忆状态评分无效');
+        }
+
+        const result = await trackProblemAction({
+            url,
+            title,
+            actionType: 'review_rated',
+            rating: safeRating
+        });
+
+        return {
+            ...(result || {}),
+            success: Boolean(result),
+            reason: result ? 'ok' : 'failed'
+        };
+    }
+
+    async function getLeetcodeReviewSummary(nowTime = Date.now()) {
+        const records = await getProblemRecords();
+        const dueRecords = Object.values(records || {})
+            .filter((record) => {
+                const reviewMeta = getRecordReviewMeta(record, nowTime);
+                return reviewMeta.isLeetcode && reviewMeta.dueToday;
+            })
+            .sort((left, right) => {
+                const leftMeta = getRecordReviewMeta(left, nowTime);
+                const rightMeta = getRecordReviewMeta(right, nowTime);
+                if (leftMeta.nextReviewTime !== rightMeta.nextReviewTime) {
+                    return leftMeta.nextReviewTime - rightMeta.nextReviewTime;
+                }
+                return helpers.compareIsoDesc(left.updatedAt, right.updatedAt);
+            });
+
+        const recent = dueRecords[0] || null;
+        return {
+            dueCount: dueRecords.length,
+            recentDueTitle: recent ? (recent.title || recent.problemKey || '未命名题目') : '',
+            recentDueUrl: recent ? (recent.url || recent.baseUrl || '') : ''
+        };
+    }
+
     modules.records = {
         extractProblemIdentity,
+        isLeetcodeSite,
+        isDeepLearningSite,
         buildRecordId,
         createEmptyRecord,
         getRecordStageCode,
         getRecordStage,
         getActionLabel,
+        getRecordReviewMeta,
+        forgettingCurve,
+        buildNextReviewState,
         aggregateRecordsByCanonicalId,
         buildRecordSummary,
         getProblemRecords,
         getProblemRecordSummary,
         getSortedProblemRecords,
         getProblemRecordByUrl,
+        getLeetcodeReviewSummary,
         buildRecordSyncDigest,
         inflateRecordFromDigest,
         trackProblemAction,
+        rateProblemMemory,
         deleteProblemRecord,
         saveProblemNote
     };

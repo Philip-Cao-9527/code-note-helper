@@ -20,7 +20,7 @@
             <div class="summary-card">
               <div class="summary-label">题单已完成题目</div>
               <div class="summary-value">${state.listSummary.completed}</div>
-              <div class="summary-note">只要触发过插件行为的题目会计入这里，跨题单重复题目按一次统计。</div>
+              <div class="summary-note">题单中只要触发过插件行为的题目都会计入这里</div>
             </div>
           </div>
         `;
