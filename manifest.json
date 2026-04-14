@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CodeNote Helper",
   "version": "1.1.0",
-  "description": "算法刷题笔记 + 间隔复习 + 深度学习复盘 + AI 对话时间轴 —— 让刷过的每道题成为长期记忆",
+  "description": "算法刷题笔记 + 间隔复习 + 深度学习复盘 + AI 对话时间轴 — 让刷过的每道题成为长期记忆",
   "author": "cao",
   "icons": {
     "16": "icons/icon16.png",
