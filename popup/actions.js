@@ -77,6 +77,17 @@
 
         let pendingResolve = null;
 
+        function applyPreviewMap(previewMap) {
+            elements.reviewRatingOptions.forEach((button) => {
+                const rating = Number(button.getAttribute('data-review-rating') || 0);
+                const previewEl = button.querySelector('.review-rating-preview');
+                if (!previewEl) return;
+                const previewEntry = previewMap && (previewMap[rating] || previewMap[String(rating)]);
+                const previewText = String(previewEntry && previewEntry.previewText || '').trim() || '计算中';
+                previewEl.textContent = `预计下次复习：${previewText}`;
+            });
+        }
+
         function finish(result) {
             elements.reviewOverlay.classList.remove('show');
             elements.reviewOverlay.setAttribute('aria-hidden', 'true');
@@ -112,10 +123,11 @@
             });
         }
 
-        return async function showReviewRatingDialog() {
+        return async function showReviewRatingDialog(previewMap) {
             if (pendingResolve) {
                 finish(0);
             }
+            applyPreviewMap(previewMap);
             elements.reviewOverlay.classList.add('show');
             elements.reviewOverlay.setAttribute('aria-hidden', 'false');
             const defaultButton = elements.reviewRatingOptions.find((button) => String(button.getAttribute('data-review-rating')) === '3')
@@ -435,7 +447,23 @@
                     return;
                 }
 
-                const rating = await showReviewRatingDialog();
+                const reviewNowTime = Date.now();
+                let previewMap = null;
+                if (typeof store.getReviewRatingPreviews === 'function') {
+                    try {
+                        previewMap = await store.getReviewRatingPreviews({
+                            url: record.url || record.baseUrl || '',
+                            site: record.site || '',
+                            problemKey: record.problemKey || '',
+                            title: record.title || record.problemKey || '未命名题目',
+                            nowTime: reviewNowTime
+                        });
+                    } catch (error) {
+                        console.warn('[Popup] 获取复习预估失败：', error);
+                    }
+                }
+
+                const rating = await showReviewRatingDialog(previewMap);
                 if (rating === 0) return;
                 if (rating < 0) {
                     showToast('请输入 1-4 的评分');
@@ -448,7 +476,8 @@
                         site: record.site || '',
                         problemKey: record.problemKey || '',
                         title: record.title || record.problemKey || '未命名题目',
-                        rating
+                        rating,
+                        nowTime: reviewNowTime
                     });
                     if (!result || result.success === false) {
                         if (result && result.reason === 'already_reviewed_today') {

@@ -61,10 +61,12 @@
                 ? (dueRemainingCount > 0 ? 'review-summary-card has-due' : 'review-summary-card done-today')
                 : 'review-summary-card is-empty';
             const todayLabel = getTodayLabel();
-            const progressText = dueTotalCount > 0
-                ? `今天有 ${dueRemainingCount}/${dueTotalCount} 道题需要复习`
-                : '今天没有待复习题目';
-            const ringUnit = dueTotalCount > 0 ? `/${dueTotalCount}` : '题';
+            let progressText = '今天没有待复习题目';
+            if (dueTotalCount > 0 && dueRemainingCount === 0) {
+                progressText = '恭喜你，已完成全部题目复习';
+            } else if (dueTotalCount > 0) {
+                progressText = `今天剩余 ${dueRemainingCount}/${dueTotalCount} 道题目需要复习`;
+            }
 
             elements.overviewReviewCard.innerHTML = `
               <div class="${reviewCardClass}">
@@ -75,7 +77,6 @@
                 <div class="review-summary-ring" aria-hidden="true">
                   <div class="review-summary-ring-inner">
                     <span class="review-summary-count">${stateUtils.escapeHtml(String(dueRemainingCount))}</span>
-                    <span class="review-summary-count-unit">${stateUtils.escapeHtml(ringUnit)}</span>
                   </div>
                 </div>
                 <div class="review-summary-main">${stateUtils.escapeHtml(progressText)}</div>

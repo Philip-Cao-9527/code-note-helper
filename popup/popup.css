@@ -257,21 +257,18 @@ input {
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: rgba(15, 23, 42, 0.95);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  gap: 2px;
 }
 
 .review-summary-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 36px;
   line-height: 1;
   font-weight: 800;
   color: #f8fafc;
-}
-
-.review-summary-count-unit {
-  font-size: 14px;
-  color: #93c5fd;
 }
 
 .review-summary-main {

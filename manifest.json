@@ -1,4 +1,4 @@
-{
+﻿{
   "manifest_version": 3,
   "name": "CodeNote Helper",
   "version": "1.1.0",
@@ -51,6 +51,7 @@
         "shared/problem-data/helpers.js",
         "shared/problem-data/sync-core.js",
         "shared/problem-data/review-fsrs.js",
+        "shared/problem-data/review-domain.js",
         "shared/problem-data/records.js",
         "shared/problem-data/importers/hot100.js",
         "shared/problem-data/lists.js",
@@ -88,6 +89,7 @@
         "shared/problem-data/helpers.js",
         "shared/problem-data/sync-core.js",
         "shared/problem-data/review-fsrs.js",
+        "shared/problem-data/review-domain.js",
         "shared/problem-data/records.js",
         "shared/problem-data/importers/hot100.js",
         "shared/problem-data/lists.js",
@@ -125,6 +127,7 @@
         "shared/problem-data/helpers.js",
         "shared/problem-data/sync-core.js",
         "shared/problem-data/review-fsrs.js",
+        "shared/problem-data/review-domain.js",
         "shared/problem-data/records.js",
         "shared/problem-data/importers/hot100.js",
         "shared/problem-data/lists.js",
@@ -235,6 +238,7 @@
         "shared/problem-data/helpers.js",
         "shared/problem-data/sync-core.js",
         "shared/problem-data/review-fsrs.js",
+        "shared/problem-data/review-domain.js",
         "shared/problem-data/records.js",
         "shared/problem-data/importers/hot100.js",
         "shared/problem-data/lists.js",
@@ -278,6 +282,7 @@
         "shared/problem-data/helpers.js",
         "shared/problem-data/sync-core.js",
         "shared/problem-data/review-fsrs.js",
+        "shared/problem-data/review-domain.js",
         "shared/problem-data/records.js",
         "shared/problem-data/importers/hot100.js",
         "shared/problem-data/lists.js",
@@ -339,3 +344,5 @@
   },
   "options_page": "options/options.html"
 }
+
+

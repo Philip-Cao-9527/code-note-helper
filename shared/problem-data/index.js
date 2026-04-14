@@ -33,6 +33,7 @@
             getProblemRecordByUrl: records.getProblemRecordByUrl,
             getLeetcodeReviewSummary: records.getLeetcodeReviewSummary,
             trackProblemAction: records.trackProblemAction,
+            getReviewRatingPreviews: records.getReviewRatingPreviews,
             rateProblemMemory: records.rateProblemMemory,
             deleteProblemRecord: records.deleteProblemRecord,
             saveProblemNote: records.saveProblemNote,

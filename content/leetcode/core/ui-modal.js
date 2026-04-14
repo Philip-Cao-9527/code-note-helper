@@ -387,15 +387,22 @@
     }
 
     function buildReviewDialogOption(option) {
+        const previewText = String(option.previewText || '').trim() || '计算中';
         return `
             <button class="nh-review-option" type="button" data-rating="${option.rating}">
                 <span class="nh-review-label">${option.label}</span>
-                <span class="nh-review-preview">预计下次复习：${option.preview}</span>
+                <span class="nh-review-preview">预计下次复习：${previewText}</span>
             </button>
         `;
     }
 
-    function showMemoryRatingDialog() {
+    function resolveReviewPreviewText(previewMap, rating) {
+        const entry = previewMap && (previewMap[rating] || previewMap[String(rating)]);
+        const text = String(entry && entry.previewText || '').trim();
+        return text || '计算中';
+    }
+
+    function showMemoryRatingDialog(previewMap) {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'nh-review-overlay';
@@ -404,10 +411,10 @@
                     <button class="nh-review-close" type="button" aria-label="关闭">×</button>
                     <div class="nh-review-title">这题现在记得怎么样？</div>
                     <div class="nh-review-options">
-                        ${buildReviewDialogOption({ rating: 1, label: '很难想起', preview: '5天后' })}
-                        ${buildReviewDialogOption({ rating: 2, label: '有点吃力', preview: '10天后' })}
-                        ${buildReviewDialogOption({ rating: 3, label: '基本记得', preview: '18天后' })}
-                        ${buildReviewDialogOption({ rating: 4, label: '很熟练', preview: '36天后' })}
+                        ${buildReviewDialogOption({ rating: 1, label: '很难想起', previewText: resolveReviewPreviewText(previewMap, 1) })}
+                        ${buildReviewDialogOption({ rating: 2, label: '有点吃力', previewText: resolveReviewPreviewText(previewMap, 2) })}
+                        ${buildReviewDialogOption({ rating: 3, label: '基本记得', previewText: resolveReviewPreviewText(previewMap, 3) })}
+                        ${buildReviewDialogOption({ rating: 4, label: '很熟练', previewText: resolveReviewPreviewText(previewMap, 4) })}
                     </div>
                     <div class="nh-review-note">说明：若未入清单，将自动加入并记录</div>
                 </div>
@@ -1601,9 +1608,10 @@
             }
 
             if (isLeetcodeProblemHost() && typeof store.rateProblemMemory === 'function') {
+                let currentRecord = null;
                 if (typeof store.getProblemRecordByUrl === 'function' && typeof store.getRecordReviewMeta === 'function') {
                     try {
-                        const currentRecord = await store.getProblemRecordByUrl(window.location.href);
+                        currentRecord = await store.getProblemRecordByUrl(window.location.href);
                         if (currentRecord) {
                             const reviewMeta = store.getRecordReviewMeta(currentRecord);
                             if (reviewMeta && reviewMeta.reviewedToday) {
@@ -1616,7 +1624,23 @@
                     }
                 }
 
-                const rating = await showMemoryRatingDialog();
+                const reviewNowTime = Date.now();
+                let previewMap = null;
+                if (typeof store.getReviewRatingPreviews === 'function') {
+                    try {
+                        previewMap = await store.getReviewRatingPreviews({
+                            url: window.location.href,
+                            site: currentRecord && currentRecord.site,
+                            problemKey: currentRecord && currentRecord.problemKey,
+                            title: getCurrentProblemRecordTitle(),
+                            nowTime: reviewNowTime
+                        });
+                    } catch (error) {
+                        console.warn('[Note Helper] 获取复习预估失败：', error);
+                    }
+                }
+
+                const rating = await showMemoryRatingDialog(previewMap);
                 if (!rating) {
                     return;
                 }
@@ -1625,7 +1649,8 @@
                     const result = await store.rateProblemMemory({
                         url: window.location.href,
                         title: getCurrentProblemRecordTitle(),
-                        rating
+                        rating,
+                        nowTime: reviewNowTime
                     });
 
                     if (!result || result.success === false) {
