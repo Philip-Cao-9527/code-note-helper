@@ -47,6 +47,13 @@
         return parseRating(rating);
     }
 
+    function buildNextFsrsCard(lastCard, nowDate, rating) {
+        if (typeof reviewFsrs.buildNextFsrsCard === 'function') {
+            return reviewFsrs.buildNextFsrsCard(lastCard, nowDate, rating, reviewFsrs.fsrsParamsRef);
+        }
+        throw new Error('FSRS 内核未加载');
+    }
+
     function getLocalDateKeyFromTime(input) {
         const date = input instanceof Date ? input : new Date(input || Date.now());
         if (Number.isNaN(date.getTime())) return '';
@@ -238,11 +245,68 @@
         return REVIEW_RATING_LABELS[parseRating(rating)] || '未设置';
     }
 
+    function buildNextReviewState(record, rating, nowTime = Date.now(), options = {}) {
+        const safeRating = parseRating(rating);
+        if (!safeRating) {
+            throw new Error('记忆状态评分无效');
+        }
+
+        const nowDate = new Date(nowTime);
+        const nowIso = nowDate.toISOString();
+        const todayKey = getLocalDateKeyFromTime(nowDate);
+        const previousReview = normalizeReviewState(record && record.review, nowTime);
+        const previousDueByToday = Boolean(getRecordReviewMeta(record, nowTime, options).dueByToday);
+        const built = buildFsrsInputCard(record, previousReview, nowTime);
+        const fsrsCard = built && built.fsrsCard ? built.fsrsCard : null;
+        if (!fsrsCard) {
+            throw new Error('FSRS 输入组装失败');
+        }
+
+        const fsrsRating = getFsrsRatingFromMemoryRating(safeRating);
+        const nextFsrsCard = buildNextFsrsCard(fsrsCard, nowDate, fsrsRating);
+        const nextReviewTime = nextFsrsCard.due.getTime();
+        const nextReviewIso = nextFsrsCard.due.toISOString();
+
+        return {
+            enabled: true,
+            algorithm: 'fsrs',
+            lastRating: safeRating,
+            lastRatedAt: nowIso,
+            nextReviewAt: nextReviewIso,
+            reviewedToday: previousDueByToday,
+            reviewedDateKey: previousDueByToday ? todayKey : '',
+            fsrsState: {
+                difficulty: nextFsrsCard.difficulty,
+                stability: nextFsrsCard.stability,
+                state: nextFsrsCard.state,
+                lastReview: parseFsrsTimestamp(nextFsrsCard.last_review || nowDate),
+                nextReview: nextReviewTime,
+                reviewCount: Math.max(0, Number(nextFsrsCard.reps || 0)),
+                lapses: Math.max(0, Number(nextFsrsCard.lapse_count || 0)),
+                quality: safeRating
+            }
+        };
+    }
+
     function buildReviewPreviewText(nextReviewAt, nowTime = Date.now()) {
         const nextTime = parseFsrsTimestamp(nextReviewAt);
         if (!nextTime) return '计算中';
         const days = Math.max(0, Math.ceil((nextTime - Number(nowTime || Date.now())) / DAY_MS));
         return `${days}天后`;
+    }
+
+    function buildReviewRatingPreviewsByRecord(record, nowTime = Date.now(), options = {}) {
+        const previews = {};
+        for (let rating = 1; rating <= 4; rating += 1) {
+            const reviewState = buildNextReviewState(record, rating, nowTime, options);
+            previews[rating] = {
+                rating,
+                label: REVIEW_RATING_LABELS[rating] || '未设置',
+                previewText: buildReviewPreviewText(reviewState.nextReviewAt, nowTime),
+                nextReviewAt: reviewState.nextReviewAt
+            };
+        }
+        return previews;
     }
 
     modules.reviewDomain = {
@@ -264,7 +328,8 @@
         buildFsrsInputCard,
         getRecordReviewMeta,
         getReviewRatingLabel,
-        buildReviewPreviewText
+        buildReviewPreviewText,
+        buildNextReviewState,
+        buildReviewRatingPreviewsByRecord
     };
 })();
-

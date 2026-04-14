@@ -1,5 +1,5 @@
 /**
- * FSRS 复习调度内核（对齐 Leetcode-Mastery-Scheduler / ts-fsrs@4.7.0）
+ * FSRS 复习调度内核（对齐 ts-fsrs@4.7.0）
  * 版本：1.1.0
  */
 

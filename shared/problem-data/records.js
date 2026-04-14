@@ -15,17 +15,27 @@
     const STAGE_LABELS = constants.STAGE_LABELS;
     const ACTION_LABELS = constants.ACTION_LABELS;
     const STAGE_PRIORITY = constants.STAGE_PRIORITY;
-    const DAY_MS = 24 * 60 * 60 * 1000;
     const LEETCODE_SITES = new Set(['leetcode.cn', 'leetcode.com']);
     const DEEP_LEARNING_SITES = new Set(['deep-ml.com', 'duoan-torchcode.hf.space']);
-    const reviewFsrs = modules.reviewFsrs || {};
     const reviewDomain = modules.reviewDomain || {};
-    const REVIEW_RATING_LABELS = reviewDomain.REVIEW_RATING_LABELS || {
-        1: '很难想起',
-        2: '有点吃力',
-        3: '基本记得',
-        4: '很熟练'
-    };
+    const REQUIRED_REVIEW_DOMAIN_FUNCTIONS = [
+        'normalizeReviewState',
+        'buildDefaultReviewState',
+        'parseRating',
+        'getRecordReviewMeta',
+        'buildNextReviewState',
+        'buildReviewRatingPreviewsByRecord',
+        'forgettingCurve'
+    ];
+    REQUIRED_REVIEW_DOMAIN_FUNCTIONS.forEach((name) => {
+        if (typeof reviewDomain[name] !== 'function') {
+            throw new Error(`复习域模块未正确加载：缺少 ${name}`);
+        }
+    });
+    const normalizeReviewState = reviewDomain.normalizeReviewState;
+    const buildDefaultReviewState = reviewDomain.buildDefaultReviewState;
+    const parseRating = reviewDomain.parseRating;
+    const forgettingCurve = reviewDomain.forgettingCurve;
 
     function parseTorchCodeNotebookPath(pathname) {
         const matchers = [
@@ -53,318 +63,16 @@
         return DEEP_LEARNING_SITES.has(String(site || '').trim().toLowerCase());
     }
 
-    function getLocalDateKeyFromTime(input) {
-        if (typeof reviewDomain.getLocalDateKeyFromTime === 'function') {
-            return reviewDomain.getLocalDateKeyFromTime(input);
-        }
-        const date = input instanceof Date ? input : new Date(input || Date.now());
-        if (Number.isNaN(date.getTime())) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    function getLocalDayEndTimestamp(input) {
-        if (typeof reviewDomain.getLocalDayEndTimestamp === 'function') {
-            return reviewDomain.getLocalDayEndTimestamp(input);
-        }
-        const date = input instanceof Date ? new Date(input.getTime()) : new Date(input || Date.now());
-        if (Number.isNaN(date.getTime())) return Date.now();
-        date.setHours(23, 59, 59, 999);
-        return date.getTime();
-    }
-
-    function getLocalDayStartTimestamp(input) {
-        if (typeof reviewDomain.getLocalDayStartTimestamp === 'function') {
-            return reviewDomain.getLocalDayStartTimestamp(input);
-        }
-        const date = input instanceof Date ? new Date(input.getTime()) : new Date(input || Date.now());
-        if (Number.isNaN(date.getTime())) return Date.now();
-        date.setHours(0, 0, 0, 0);
-        return date.getTime();
-    }
-
-    function normalizeIso(input) {
-        if (typeof reviewDomain.normalizeIso === 'function') {
-            return reviewDomain.normalizeIso(input);
-        }
-        if (!input) return null;
-        const date = new Date(input);
-        if (Number.isNaN(date.getTime())) return null;
-        return date.toISOString();
-    }
-
-    function parseRating(rating) {
-        if (typeof reviewDomain.parseRating === 'function') {
-            return reviewDomain.parseRating(rating);
-        }
-        const number = Number(rating);
-        if (!Number.isInteger(number)) return 0;
-        if (number < 1 || number > 4) return 0;
-        return number;
-    }
-
-    function parseFsrsTimestamp(input) {
-        if (typeof reviewDomain.parseFsrsTimestamp === 'function') {
-            return reviewDomain.parseFsrsTimestamp(input);
-        }
-        if (reviewFsrs.parseFsrsTimestamp) {
-            return reviewFsrs.parseFsrsTimestamp(input);
-        }
-        const value = Number(input);
-        return Number.isFinite(value) ? value : 0;
-    }
-
-    function normalizeFsrsStateValue(input) {
-        if (typeof reviewDomain.normalizeFsrsStateValue === 'function') {
-            return reviewDomain.normalizeFsrsStateValue(input);
-        }
-        if (reviewFsrs.normalizeFsrsStateValue) {
-            return reviewFsrs.normalizeFsrsStateValue(input);
-        }
-        const number = Number(input);
-        return Number.isInteger(number) ? number : 0;
-    }
-
-    function getFsrsRatingFromMemoryRating(rating) {
-        if (typeof reviewDomain.getFsrsRatingFromMemoryRating === 'function') {
-            return reviewDomain.getFsrsRatingFromMemoryRating(rating);
-        }
-        if (reviewFsrs.getFsrsRatingFromMemoryRating) {
-            return reviewFsrs.getFsrsRatingFromMemoryRating(rating);
-        }
-        return rating;
-    }
-
-    function buildNextFsrsCard(lastCard, nowDate, rating) {
-        if (reviewFsrs.buildNextFsrsCard) {
-            return reviewFsrs.buildNextFsrsCard(lastCard, nowDate, rating, reviewFsrs.fsrsParamsRef);
-        }
-        throw new Error('FSRS 内核未加载');
-    }
-
-    function resolveReviewBaseTime(record, previousReview, nowTime) {
-        if (typeof reviewDomain.resolveReviewBaseTime === 'function') {
-            return reviewDomain.resolveReviewBaseTime(record, previousReview, nowTime);
-        }
-        const fsrsState = previousReview.fsrsState || {};
-        const timeCandidates = [
-            fsrsState.lastReview,
-            previousReview.lastRatedAt,
-            record && record.submissionPassedAt,
-            record && record.manualAddedAt,
-            record && record.lastActionAt
-        ];
-        for (const candidate of timeCandidates) {
-            const value = parseFsrsTimestamp(candidate);
-            if (value > 0) return value;
-        }
-        return nowTime;
-    }
-
-    function buildDefaultReviewState() {
-        if (typeof reviewDomain.buildDefaultReviewState === 'function') {
-            return reviewDomain.buildDefaultReviewState();
-        }
-        return {
-            enabled: false,
-            algorithm: 'fsrs',
-            lastRating: 0,
-            lastRatedAt: null,
-            nextReviewAt: null,
-            reviewedToday: false,
-            reviewedDateKey: '',
-            fsrsState: null
-        };
-    }
-
-    function normalizeReviewState(review, nowTime = Date.now()) {
-        if (typeof reviewDomain.normalizeReviewState === 'function') {
-            return reviewDomain.normalizeReviewState(review, nowTime);
-        }
-        if (!review || typeof review !== 'object') {
-            return buildDefaultReviewState();
-        }
-
-        const todayKey = getLocalDateKeyFromTime(nowTime);
-        const merged = {
-            ...buildDefaultReviewState(),
-            ...review
-        };
-
-        merged.algorithm = merged.algorithm || 'fsrs';
-        merged.lastRating = parseRating(merged.lastRating);
-        merged.lastRatedAt = normalizeIso(merged.lastRatedAt);
-        merged.nextReviewAt = normalizeIso(merged.nextReviewAt);
-        merged.reviewedDateKey = String(merged.reviewedDateKey || '').trim();
-
-        if (merged.fsrsState && typeof merged.fsrsState === 'object') {
-            const nextReviewNumber = parseFsrsTimestamp(merged.fsrsState.nextReview);
-            const lastReviewNumber = parseFsrsTimestamp(merged.fsrsState.lastReview);
-            merged.fsrsState = {
-                ...merged.fsrsState,
-                difficulty: Math.max(0, Number(merged.fsrsState.difficulty || 0)),
-                stability: Math.max(0, Number(merged.fsrsState.stability || 0)),
-                state: normalizeFsrsStateValue(merged.fsrsState.state),
-                reviewCount: Math.max(0, Number(merged.fsrsState.reviewCount || merged.fsrsState.reps || 0)),
-                lapses: Math.max(0, Number(merged.fsrsState.lapses || merged.fsrsState.lapse_count || 0)),
-                quality: parseRating(merged.fsrsState.quality || merged.lastRating || 0),
-                lastReview: Number.isFinite(lastReviewNumber) ? lastReviewNumber : 0,
-                nextReview: Number.isFinite(nextReviewNumber) ? nextReviewNumber : 0
-            };
-        } else {
-            merged.fsrsState = null;
-        }
-
-        if (!merged.reviewedDateKey && merged.lastRatedAt) {
-            merged.reviewedDateKey = getLocalDateKeyFromTime(merged.lastRatedAt);
-        }
-
-        merged.reviewedToday = merged.reviewedDateKey === todayKey && Boolean(merged.reviewedToday);
-        merged.enabled = Boolean(merged.enabled) && Boolean(merged.nextReviewAt);
-
-        return merged;
-    }
-
-    function calculateElapsedDays(lastReviewTime, nowTime = Date.now()) {
-        if (typeof reviewDomain.calculateElapsedDays === 'function') {
-            return reviewDomain.calculateElapsedDays(lastReviewTime, nowTime);
-        }
-        if (reviewFsrs.calculateElapsedDays) {
-            return reviewFsrs.calculateElapsedDays(lastReviewTime, nowTime);
-        }
-        const left = parseFsrsTimestamp(lastReviewTime);
-        const right = Number(nowTime || Date.now());
-        if (!Number.isFinite(left) || !Number.isFinite(right) || right <= left) return 0;
-        return Math.max(0, Math.floor((right - left) / DAY_MS));
-    }
-
-    function forgettingCurve(elapsedDays, stability) {
-        if (typeof reviewDomain.forgettingCurve === 'function') {
-            return reviewDomain.forgettingCurve(elapsedDays, stability);
-        }
-        const retention = reviewFsrs.forgettingCurve
-            ? reviewFsrs.forgettingCurve(elapsedDays, stability)
-            : 0;
-        if (!Number.isFinite(retention)) return 0;
-        return Math.max(0, Math.min(1, retention));
-    }
-
     function getRecordReviewMeta(record, nowTime = Date.now()) {
-        if (typeof reviewDomain.getRecordReviewMeta === 'function') {
-            return reviewDomain.getRecordReviewMeta(record, nowTime, { isLeetcodeSite });
-        }
-        const review = normalizeReviewState(record && record.review, nowTime);
-        const site = String(record && record.site || '').trim().toLowerCase();
-        const isLeetcode = isLeetcodeSite(site);
-        const dayStart = getLocalDayStartTimestamp(nowTime);
-        const nextReviewIso = review.nextReviewAt;
-        const nextReviewTime = nextReviewIso ? new Date(nextReviewIso).getTime() : 0;
-        const hasNextReview = Number.isFinite(nextReviewTime) && nextReviewTime > 0;
-        const rawDueByToday = hasNextReview && nextReviewTime <= getLocalDayEndTimestamp(nowTime);
-        const reviewedToday = Boolean(review.reviewedToday);
-        const dueByToday = Boolean(review.enabled && isLeetcode && (rawDueByToday || reviewedToday));
-        const dueToday = Boolean(dueByToday && !review.reviewedToday);
-        const overdueDays = dueToday && nextReviewTime < dayStart
-            ? Math.max(1, Math.ceil((dayStart - nextReviewTime) / DAY_MS))
-            : 0;
-        const fsrsState = review.fsrsState || null;
-        const recallProbability = fsrsState && fsrsState.stability > 0 && fsrsState.lastReview > 0
-            ? forgettingCurve(calculateElapsedDays(fsrsState.lastReview, nowTime), fsrsState.stability)
-            : 1;
-
-        return {
-            enabled: Boolean(review.enabled),
-            review,
-            isLeetcode,
-            dueToday,
-            dueByToday: Boolean(review.enabled && isLeetcode && dueByToday),
-            reviewedToday,
-            overdueDays,
-            nextReviewTime,
-            recallProbability,
-            ratingLabel: REVIEW_RATING_LABELS[review.lastRating] || '未设置'
-        };
+        return reviewDomain.getRecordReviewMeta(record, nowTime, { isLeetcodeSite });
     }
 
     function buildNextReviewState(record, rating, nowTime = Date.now()) {
-        const safeRating = parseRating(rating);
-        if (!safeRating) {
-            throw new Error('记忆状态评分无效');
-        }
-
-        const nowDate = new Date(nowTime);
-        const nowIso = nowDate.toISOString();
-        const todayKey = getLocalDateKeyFromTime(nowDate);
-        const previousReview = normalizeReviewState(record && record.review, nowTime);
-        const previousDueByToday = Boolean(getRecordReviewMeta(record, nowTime).dueByToday);
-        const previousFsrs = previousReview.fsrsState || {};
-        let fsrsCard = null;
-        if (typeof reviewDomain.buildFsrsInputCard === 'function') {
-            const built = reviewDomain.buildFsrsInputCard(record, previousReview, nowTime);
-            if (built && built.fsrsCard) {
-                fsrsCard = built.fsrsCard;
-            }
-        }
-        if (!fsrsCard) {
-            const baseTime = resolveReviewBaseTime(record, previousReview, nowTime);
-            const lastReviewDate = new Date(baseTime);
-            const cardDueTime = parseFsrsTimestamp(previousFsrs.nextReview) || baseTime;
-            const cardScheduledDays = Math.max(0, Math.floor((cardDueTime - baseTime) / DAY_MS));
-            fsrsCard = {
-                due: new Date(cardDueTime),
-                stability: Number(previousFsrs.stability || 0),
-                difficulty: Number(previousFsrs.difficulty || 0),
-                elapsed_days: Math.max(0, (nowTime - baseTime) / DAY_MS),
-                scheduled_days: cardScheduledDays,
-                reps: Math.max(0, Number(previousFsrs.reviewCount || 0)),
-                lapse_count: Math.max(0, Number(previousFsrs.lapses || 0)),
-                state: normalizeFsrsStateValue(previousFsrs.state),
-                last_review: lastReviewDate
-            };
-        }
-        const fsrsRating = getFsrsRatingFromMemoryRating(safeRating);
-        const nextFsrsCard = buildNextFsrsCard(fsrsCard, nowDate, fsrsRating);
-        const nextReviewTime = nextFsrsCard.due.getTime();
-        const nextReviewIso = nextFsrsCard.due.toISOString();
-
-        return {
-            enabled: true,
-            algorithm: 'fsrs',
-            lastRating: safeRating,
-            lastRatedAt: nowIso,
-            nextReviewAt: nextReviewIso,
-            reviewedToday: previousDueByToday,
-            reviewedDateKey: previousDueByToday ? todayKey : '',
-            fsrsState: {
-                difficulty: nextFsrsCard.difficulty,
-                stability: nextFsrsCard.stability,
-                state: nextFsrsCard.state,
-                lastReview: parseFsrsTimestamp(nextFsrsCard.last_review || nowDate),
-                nextReview: nextReviewTime,
-                reviewCount: Math.max(0, Number(nextFsrsCard.reps || 0)),
-                lapses: Math.max(0, Number(nextFsrsCard.lapse_count || 0)),
-                quality: safeRating
-            }
-        };
+        return reviewDomain.buildNextReviewState(record, rating, nowTime, { isLeetcodeSite });
     }
 
     function buildReviewRatingPreviewsByRecord(record, nowTime = Date.now()) {
-        const previews = {};
-        for (let rating = 1; rating <= 4; rating += 1) {
-            const reviewState = buildNextReviewState(record, rating, nowTime);
-            const previewText = typeof reviewDomain.buildReviewPreviewText === 'function'
-                ? reviewDomain.buildReviewPreviewText(reviewState.nextReviewAt, nowTime)
-                : `${Math.max(0, Math.ceil((new Date(reviewState.nextReviewAt).getTime() - nowTime) / DAY_MS))}天后`;
-            previews[rating] = {
-                rating,
-                label: REVIEW_RATING_LABELS[rating] || '未设置',
-                previewText,
-                nextReviewAt: reviewState.nextReviewAt
-            };
-        }
-        return previews;
+        return reviewDomain.buildReviewRatingPreviewsByRecord(record, nowTime, { isLeetcodeSite });
     }
 
     function extractProblemIdentity(url) {
