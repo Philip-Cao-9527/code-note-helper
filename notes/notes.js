@@ -1,6 +1,6 @@
 /**
  * 笔记网页逻辑
- * 版本：1.0.69
+ * 版本：1.1.1
  */
 
 (function () {
@@ -32,6 +32,10 @@
         listId: '',
         initialUrl: '',
         initialTitle: '',
+        initialSite: '',
+        initialProblemKey: '',
+        initialCanonicalId: '',
+        initialTitleSlug: '',
         layoutMode: 'split',
         dirty: false,
         notebookTitle: '题目笔记本',
@@ -424,6 +428,51 @@
         return normalizedUrl;
     }
 
+    function normalizeCanonicalByStableFields(siteInput, problemKeyInput, titleSlugInput) {
+        const site = String(siteInput || '').trim().toLowerCase();
+        const problemKey = String(problemKeyInput || titleSlugInput || '').trim();
+        if (!site || !problemKey) return '';
+
+        if (state.store && typeof state.store.createIdentityFromSiteAndProblemKey === 'function') {
+            const identity = state.store.createIdentityFromSiteAndProblemKey(site, problemKey);
+            if (identity && identity.supported && identity.canonicalId) {
+                return identity.canonicalId;
+            }
+        }
+
+        if (site === 'leetcode.cn' || site === 'leetcode.com') return `leet:${problemKey}`;
+        if (site === 'codefun2000.com') return `codefun:${problemKey}`;
+        if (site === 'deep-ml.com') return `deepml:${problemKey}`;
+        if (site === 'duoan-torchcode.hf.space') return `torchcode:${problemKey}`;
+        return '';
+    }
+
+    function buildUrlFromStableFields(siteInput, problemKeyInput, titleSlugInput) {
+        const site = String(siteInput || '').trim().toLowerCase();
+        const problemKey = String(problemKeyInput || titleSlugInput || '').trim();
+        if (!site || !problemKey) return '';
+
+        if (state.store && typeof state.store.buildProblemUrlFromSiteAndProblemKey === 'function') {
+            const resolved = String(state.store.buildProblemUrlFromSiteAndProblemKey(site, problemKey) || '').trim();
+            if (resolved) return resolved;
+        }
+
+        if (site === 'leetcode.cn' || site === 'leetcode.com') {
+            return `https://${site}/problems/${problemKey}/`;
+        }
+        if (site === 'codefun2000.com') {
+            return `https://${site}/p/${problemKey}`;
+        }
+        if (site === 'deep-ml.com') {
+            return `https://${site}/problems/${problemKey}`;
+        }
+        if (site === 'duoan-torchcode.hf.space') {
+            const normalizedKey = problemKey.replace(/\.ipynb$/i, '');
+            return `https://${site}/tree/${normalizedKey}.ipynb`;
+        }
+        return '';
+    }
+
     function parseIsoTime(value) {
         const stamp = Date.parse(value || '');
         return Number.isNaN(stamp) ? 0 : stamp;
@@ -433,7 +482,9 @@
         const canonicalMap = new Map();
         Object.values(recordMap || {}).forEach((record) => {
             if (!record) return;
-            const canonicalId = record.canonicalId || normalizeCanonicalByUrl(record.url || record.baseUrl || '');
+            const canonicalId = record.canonicalId
+                || normalizeCanonicalByUrl(record.url || record.baseUrl || '')
+                || normalizeCanonicalByStableFields(record.site, record.problemKey, record.titleSlug);
             if (!canonicalId) return;
             const existing = canonicalMap.get(canonicalId);
             if (!existing || parseIsoTime(record.updatedAt) >= parseIsoTime(existing.updatedAt)) {
@@ -444,12 +495,20 @@
     }
 
     function buildEntryFromRecord(record) {
-        const canonicalId = record.canonicalId || normalizeCanonicalByUrl(record.url || record.baseUrl || '');
+        const site = String(record.site || '').trim().toLowerCase();
+        const problemKey = String(record.problemKey || record.titleSlug || '').trim();
+        const recoveredUrl = buildUrlFromStableFields(site, problemKey, record.titleSlug);
+        const canonicalId = record.canonicalId
+            || normalizeCanonicalByUrl(record.url || record.baseUrl || recoveredUrl)
+            || normalizeCanonicalByStableFields(site, problemKey, record.titleSlug);
         return {
             key: record.id || canonicalId || `record:${Math.random().toString(36).slice(2)}`,
             canonicalId: canonicalId || '',
             title: record.title || record.problemKey || '未命名题目',
-            url: record.url || record.baseUrl || '',
+            url: record.url || record.baseUrl || recoveredUrl || '',
+            site,
+            problemKey,
+            titleSlug: String(record.titleSlug || '').trim(),
             noteContent: record.noteContent || '',
             updatedAt: record.updatedAt || '',
             hasSavedNote: hasSavedNote(record.noteContent || ''),
@@ -459,12 +518,22 @@
 
     function buildEntryFromListItem(item) {
         const matched = item.matchedRecord || {};
-        const canonicalId = item.canonicalId || matched.canonicalId || normalizeCanonicalByUrl(item.url || item.baseUrl || '');
+        const site = String(item.site || matched.site || '').trim().toLowerCase();
+        const problemKey = String(item.problemKey || item.titleSlug || matched.problemKey || '').trim();
+        const titleSlug = String(item.titleSlug || matched.titleSlug || '').trim();
+        const recoveredUrl = buildUrlFromStableFields(site, problemKey, titleSlug);
+        const canonicalId = item.canonicalId
+            || matched.canonicalId
+            || normalizeCanonicalByUrl(item.url || item.baseUrl || matched.url || matched.baseUrl || recoveredUrl)
+            || normalizeCanonicalByStableFields(site, problemKey, titleSlug);
         return {
             key: canonicalId || `list-item:${item.order || item.frontendQuestionId || item.titleSlug || Math.random().toString(36).slice(2)}`,
             canonicalId: canonicalId || '',
             title: item.translatedTitle || item.title || item.titleSlug || '未命名题目',
-            url: item.url || item.baseUrl || matched.url || matched.baseUrl || '',
+            url: item.url || item.baseUrl || matched.url || matched.baseUrl || recoveredUrl || '',
+            site,
+            problemKey,
+            titleSlug,
             noteContent: matched.noteContent || '',
             updatedAt: matched.updatedAt || '',
             hasSavedNote: hasSavedNote(matched.noteContent || ''),
@@ -495,7 +564,10 @@
         return [
             entry.title,
             entry.canonicalId,
-            entry.url
+            entry.url,
+            entry.site,
+            entry.problemKey,
+            entry.titleSlug
         ].filter(Boolean).join(' ').toLowerCase();
     }
 
@@ -625,14 +697,27 @@
         const list = Array.isArray(entries) ? entries.slice() : [];
         const config = options || {};
         const initialUrl = String(config.initialUrl || '').trim();
+        const initialSite = String(config.initialSite || '').trim().toLowerCase();
+        const initialProblemKey = String(config.initialProblemKey || '').trim();
+        const initialCanonicalId = String(config.initialCanonicalId || '').trim();
+        const initialTitleSlug = String(config.initialTitleSlug || '').trim();
         const initialTitle = String(config.initialTitle || '').trim();
         const source = String(config.source || 'problems').trim();
-        const initialCanonical = normalizeCanonicalByUrl(initialUrl);
+        const initialCanonical = initialCanonicalId
+            || normalizeCanonicalByUrl(initialUrl)
+            || normalizeCanonicalByStableFields(initialSite, initialProblemKey, initialTitleSlug);
         const normalizedInitialUrl = initialUrl.replace(/\/+$/, '');
         let matchedEntry = null;
 
         if (initialCanonical) {
             matchedEntry = list.find((entry) => String(entry.canonicalId || '').trim() === initialCanonical) || null;
+        }
+        if (!matchedEntry && initialSite && initialProblemKey) {
+            matchedEntry = list.find((entry) => {
+                const entrySite = String(entry.site || '').trim().toLowerCase();
+                const entryProblemKey = String(entry.problemKey || entry.titleSlug || '').trim();
+                return entrySite === initialSite && entryProblemKey === initialProblemKey;
+            }) || null;
         }
         if (!matchedEntry && normalizedInitialUrl) {
             matchedEntry = list.find((entry) => {
@@ -641,12 +726,19 @@
             }) || null;
         }
 
-        if (!list.length && initialUrl) {
+        if (!list.length && (initialUrl || initialCanonical || (initialSite && (initialProblemKey || initialTitleSlug)))) {
+            const recoveredUrl = initialUrl || buildUrlFromStableFields(initialSite, initialProblemKey, initialTitleSlug);
+            const resolvedProblemKey = initialProblemKey || initialTitleSlug;
             list.unshift({
-                key: `url:${initialUrl}`,
-                canonicalId: '',
+                key: initialCanonical
+                    ? `canonical:${initialCanonical}`
+                    : (recoveredUrl ? `url:${recoveredUrl}` : `identity:${initialSite}:${resolvedProblemKey}`),
+                canonicalId: initialCanonical || '',
                 title: initialTitle || (source === 'lists' ? '题单题目' : '题目'),
-                url: initialUrl,
+                url: recoveredUrl,
+                site: initialSite,
+                problemKey: resolvedProblemKey,
+                titleSlug: initialTitleSlug,
                 noteContent: '',
                 updatedAt: '',
                 hasSavedNote: false,
@@ -666,6 +758,10 @@
     function ensureInitialEntry() {
         const resolved = resolveInitialEntryWithoutAutoFocus(state.notebookEntries, {
             initialUrl: state.initialUrl,
+            initialSite: state.initialSite,
+            initialProblemKey: state.initialProblemKey,
+            initialCanonicalId: state.initialCanonicalId,
+            initialTitleSlug: state.initialTitleSlug,
             initialTitle: state.initialTitle,
             source: state.source
         });
@@ -714,11 +810,8 @@
         visibleEntries.forEach((entry) => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = `notebook-item${entry.key === state.activeKey ? ' active' : ''}${entry.url ? '' : ' disabled'}`;
+            button.className = `notebook-item${entry.key === state.activeKey ? ' active' : ''}`;
             button.dataset.noteKey = entry.key;
-            if (!entry.url) {
-                button.disabled = true;
-            }
 
             const title = document.createElement('div');
             title.className = 'item-title';
@@ -802,8 +895,11 @@
             setStatus('没有可保存的题目', true);
             return;
         }
-        if (!active.url) {
-            setStatus('当前题目缺少 URL，无法保存', true);
+        const resolvedUrl = String(active.url || '').trim() || buildUrlFromStableFields(active.site, active.problemKey, active.titleSlug);
+        const resolvedProblemKey = String(active.problemKey || active.titleSlug || '').trim();
+        const resolvedSite = String(active.site || '').trim();
+        if (!resolvedUrl && !(resolvedSite && resolvedProblemKey)) {
+            setStatus('当前题目缺少可用标识，无法保存', true);
             return;
         }
 
@@ -814,18 +910,36 @@
         setStatus('正在保存...');
 
         try {
-            const savedRecord = await state.store.saveProblemNote({
-                url: active.url,
+            const payload = {
                 title: active.title,
                 noteContent
-            });
+            };
+            if (resolvedUrl) {
+                payload.url = resolvedUrl;
+            }
+            if (resolvedSite && resolvedProblemKey) {
+                payload.site = resolvedSite;
+                payload.problemKey = resolvedProblemKey;
+            }
+            const savedRecord = await state.store.saveProblemNote(payload);
 
             active.noteContent = noteContent;
             active.updatedAt = savedRecord && savedRecord.updatedAt ? savedRecord.updatedAt : new Date().toISOString();
             active.hasSavedNote = hasSavedNote(noteContent);
+            active.url = savedRecord && (savedRecord.url || savedRecord.baseUrl)
+                ? (savedRecord.url || savedRecord.baseUrl)
+                : (active.url || resolvedUrl);
+            active.site = savedRecord && savedRecord.site
+                ? String(savedRecord.site).trim().toLowerCase()
+                : resolvedSite;
+            active.problemKey = savedRecord && savedRecord.problemKey
+                ? String(savedRecord.problemKey).trim()
+                : resolvedProblemKey;
             active.canonicalId = savedRecord && savedRecord.canonicalId
                 ? savedRecord.canonicalId
-                : (active.canonicalId || normalizeCanonicalByUrl(active.url));
+                : (active.canonicalId
+                    || normalizeCanonicalByUrl(active.url)
+                    || normalizeCanonicalByStableFields(active.site, active.problemKey, active.titleSlug));
 
             state.dirty = false;
             renderNotebookList();
@@ -851,13 +965,19 @@
 
     async function handleOpenProblem() {
         const active = getActiveEntry();
-        if (!active || !active.url) {
-            setStatus('当前题目缺少 URL，无法打开', true);
+        if (!active) {
+            setStatus('当前没有可打开的题目', true);
+            return;
+        }
+        const resolvedUrl = String(active.url || '').trim() || buildUrlFromStableFields(active.site, active.problemKey, active.titleSlug);
+        if (!resolvedUrl) {
+            setStatus('当前题目缺少可用链接，无法打开', true);
             return;
         }
 
         try {
-            await openUrlInNewTab(active.url);
+            active.url = resolvedUrl;
+            await openUrlInNewTab(resolvedUrl);
         } catch (error) {
             console.error('[Notes] 打开题目失败：', error);
             setStatus('打开题目失败，请稍后重试', true);
@@ -979,6 +1099,10 @@
         state.listId = String(params.get('listId') || '').trim();
         state.initialUrl = String(params.get('url') || '').trim();
         state.initialTitle = String(params.get('title') || '').trim();
+        state.initialSite = String(params.get('site') || '').trim().toLowerCase();
+        state.initialProblemKey = String(params.get('problemKey') || '').trim();
+        state.initialCanonicalId = String(params.get('canonicalId') || '').trim();
+        state.initialTitleSlug = String(params.get('titleSlug') || '').trim();
     }
 
     async function bootstrap() {

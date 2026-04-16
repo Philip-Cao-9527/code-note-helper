@@ -4,6 +4,20 @@
  */
 
 const Messaging = {
+    _contextInvalidatedNotified: false,
+
+    _isContextInvalidatedError(error) {
+        const message = String(error && error.message || error || '').toLowerCase();
+        return message.includes('extension context invalidated');
+    },
+
+    _normalizeError(error) {
+        if (error instanceof Error) {
+            return error;
+        }
+        return new Error(String(error || '未知消息错误'));
+    },
+
     /**
      * 发送消息到 Service Worker
      * @param {string} type 消息类型
@@ -18,8 +32,15 @@ const Messaging = {
             }
             return response;
         } catch (e) {
+            if (this._isContextInvalidatedError(e)) {
+                if (!this._contextInvalidatedNotified) {
+                    this._contextInvalidatedNotified = true;
+                    console.info('[Messaging] 扩展上下文已失效，后续消息发送将等待页面刷新。');
+                }
+                throw this._normalizeError(e);
+            }
             console.error('[Messaging] 发送失败:', type, e);
-            throw e;
+            throw this._normalizeError(e);
         }
     },
 

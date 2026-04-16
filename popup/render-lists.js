@@ -1,6 +1,6 @@
 /**
  * Popup 题单页渲染
- * 版本：1.0.63
+ * 版本：1.1.1
  */
 
 (function () {
@@ -76,6 +76,10 @@
                     type="button"
                     class="row-action-btn note"
                     data-open-note-url="${stateUtils.escapeHtml(item.url || item.baseUrl || '')}"
+                    data-open-note-site="${stateUtils.escapeHtml(item.site || list.site || '')}"
+                    data-open-note-problem-key="${stateUtils.escapeHtml(item.problemKey || item.titleSlug || '')}"
+                    data-open-note-canonical-id="${stateUtils.escapeHtml(item.canonicalId || '')}"
+                    data-open-note-title-slug="${stateUtils.escapeHtml(item.titleSlug || '')}"
                     data-open-note-title="${stateUtils.escapeHtml(item.translatedTitle || item.title || item.titleSlug || '未命名题目')}"
                     data-open-note-source="lists"
                     data-open-note-list-id="${stateUtils.escapeHtml(list.listId)}">

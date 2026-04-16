@@ -1,6 +1,6 @@
 /**
  * 复习域公共逻辑（状态归一化 / reviewMeta / FSRS 输入组装）
- * 版本：1.1.0
+ * 版本：1.1.1
  */
 
 (function () {
@@ -97,6 +97,10 @@
             algorithm: 'fsrs',
             lastRating: 0,
             lastRatedAt: null,
+            // 记录“今天是否已评分”的日期键，用于同题同天评分去重。
+            lastRatedDateKey: '',
+            // 记录“今天是否已提醒”的日期键，与评分状态独立，避免重复提醒。
+            lastRemindedDateKey: '',
             nextReviewAt: null,
             reviewedToday: false,
             reviewedDateKey: '',
@@ -119,6 +123,8 @@
         merged.lastRating = parseRating(merged.lastRating);
         merged.lastRatedAt = normalizeIso(merged.lastRatedAt);
         merged.nextReviewAt = normalizeIso(merged.nextReviewAt);
+        merged.lastRatedDateKey = String(merged.lastRatedDateKey || '').trim();
+        merged.lastRemindedDateKey = String(merged.lastRemindedDateKey || '').trim();
         merged.reviewedDateKey = String(merged.reviewedDateKey || '').trim();
 
         if (merged.fsrsState && typeof merged.fsrsState === 'object') {
@@ -139,7 +145,10 @@
             merged.fsrsState = null;
         }
 
-        if (!merged.reviewedDateKey && merged.lastRatedAt) {
+        if (!merged.lastRatedDateKey && merged.lastRatedAt) {
+            merged.lastRatedDateKey = getLocalDateKeyFromTime(merged.lastRatedAt);
+        }
+        if (!merged.reviewedDateKey && merged.reviewedToday && merged.lastRatedAt) {
             merged.reviewedDateKey = getLocalDateKeyFromTime(merged.lastRatedAt);
         }
 
@@ -212,11 +221,14 @@
             ? Boolean(options.isLeetcodeSite(site))
             : false;
         const dayStart = getLocalDayStartTimestamp(nowTime);
+        const todayKey = getLocalDateKeyFromTime(nowTime);
         const nextReviewIso = review.nextReviewAt;
         const nextReviewTime = nextReviewIso ? new Date(nextReviewIso).getTime() : 0;
         const hasNextReview = Number.isFinite(nextReviewTime) && nextReviewTime > 0;
         const rawDueByToday = hasNextReview && nextReviewTime <= getLocalDayEndTimestamp(nowTime);
         const reviewedToday = Boolean(review.reviewedToday);
+        const ratedToday = review.lastRatedDateKey === todayKey;
+        const remindedToday = review.lastRemindedDateKey === todayKey;
         const dueByToday = Boolean(review.enabled && isLeetcode && (rawDueByToday || reviewedToday));
         const dueToday = Boolean(dueByToday && !review.reviewedToday);
         const overdueDays = dueToday && nextReviewTime < dayStart
@@ -234,6 +246,8 @@
             dueToday,
             dueByToday: Boolean(review.enabled && isLeetcode && dueByToday),
             reviewedToday,
+            ratedToday,
+            remindedToday,
             overdueDays,
             nextReviewTime,
             recallProbability,
@@ -272,6 +286,8 @@
             algorithm: 'fsrs',
             lastRating: safeRating,
             lastRatedAt: nowIso,
+            lastRatedDateKey: todayKey,
+            lastRemindedDateKey: previousReview.lastRemindedDateKey || '',
             nextReviewAt: nextReviewIso,
             reviewedToday: previousDueByToday,
             reviewedDateKey: previousDueByToday ? todayKey : '',

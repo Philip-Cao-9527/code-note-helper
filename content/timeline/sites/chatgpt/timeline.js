@@ -198,13 +198,13 @@
 
             const el = await this.waitForElement(this.adapter.userMessageSelector);
             if (!el) {
-                console.warn('[AI Timeline] 未找到消息元素');
+                console.debug('[AI Timeline] 未找到消息元素');
                 setTimeout(() => this.init(), 2000);
                 return;
             }
 
             if (!this.findContainers()) {
-                console.warn('[AI Timeline] 未找到对话容器');
+                console.debug('[AI Timeline] 未找到对话容器');
                 return;
             }
 
@@ -239,7 +239,7 @@
             if (this.adapter.name === 'ChatGPT') {
                 const firstMessage = document.querySelector(this.adapter.userMessageSelector);
                 if (!firstMessage) {
-                    console.warn('[AI Timeline] 未找到消息元素');
+                    console.debug('[AI Timeline] 未找到消息元素');
                     return false;
                 }
 
@@ -300,7 +300,7 @@
             // 2. 从消息元素向上查找
             const firstMessage = document.querySelector(this.adapter.userMessageSelector);
             if (!firstMessage) {
-                console.warn('[AI Timeline] 未找到消息元素');
+                console.debug('[AI Timeline] 未找到消息元素');
                 return false;
             }
 
@@ -974,6 +974,7 @@
     }
 
 })();
+
 
 
 

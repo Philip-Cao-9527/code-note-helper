@@ -1,6 +1,6 @@
 /**
  * Popup 交互动作
- * 版本：1.1.0
+ * 版本：1.1.1
  */
 
 (function () {
@@ -30,10 +30,22 @@
 
     function buildNotesPageUrl(noteTarget) {
         const problemUrl = String(noteTarget.getAttribute('data-open-note-url') || '').trim();
-        if (!problemUrl) return '';
-
         const params = new URLSearchParams();
-        params.set('url', problemUrl);
+        if (problemUrl) {
+            params.set('url', problemUrl);
+        }
+
+        const site = String(noteTarget.getAttribute('data-open-note-site') || '').trim();
+        const problemKey = String(noteTarget.getAttribute('data-open-note-problem-key') || '').trim();
+        const canonicalId = String(noteTarget.getAttribute('data-open-note-canonical-id') || '').trim();
+        const titleSlug = String(noteTarget.getAttribute('data-open-note-title-slug') || '').trim();
+        if (site) params.set('site', site);
+        if (problemKey) params.set('problemKey', problemKey);
+        if (canonicalId) params.set('canonicalId', canonicalId);
+        if (titleSlug) params.set('titleSlug', titleSlug);
+        if (!problemUrl && !site && !problemKey && !canonicalId && !titleSlug) {
+            return '';
+        }
 
         const title = String(noteTarget.getAttribute('data-open-note-title') || '').trim();
         if (title) {
@@ -53,6 +65,32 @@
 
     async function openSettingsPage() {
         await chrome.runtime.openOptionsPage();
+    }
+
+    function resolveErrorMessage(error) {
+        if (error && typeof error.message === 'string') {
+            return error.message.trim();
+        }
+        return String(error || '').trim();
+    }
+
+    function isExpectedListImportError(error) {
+        const code = String(error && error.code || '').trim();
+        if (code === 'list_exists' || code === 'unsupported_list_source') {
+            return true;
+        }
+        const message = resolveErrorMessage(error);
+        if (!message) return false;
+        return message.includes('当前题单已经存在')
+            || message.includes('暂不在支持范围内');
+    }
+
+    function logListImportFailure(prefix, error) {
+        if (isExpectedListImportError(error)) {
+            // 可预期业务分支（例如重复导入/不支持来源）仅通过 UI 提示，不写控制台错误或警告。
+            return;
+        }
+        console.error(prefix, error);
     }
 
     function createReviewRatingController(elements) {
@@ -319,8 +357,8 @@
                     await refreshData();
                     showToast('Hot100 已导入');
                 } catch (error) {
-                    console.error('[Popup] 导入 Hot100 失败：', error);
-                    showToast(error.message || '导入失败，请稍后重试', 2600);
+                    logListImportFailure('[Popup] 导入 Hot100 提示：', error);
+                    showToast(resolveErrorMessage(error) || '导入失败，请稍后重试', 2600);
                 } finally {
                     setListImportPending(false);
                 }
@@ -341,8 +379,8 @@
                     await refreshData();
                     showToast('题单已导入');
                 } catch (error) {
-                    console.error('[Popup] 导入题单失败：', error);
-                    showToast(error.message || '导入失败，请稍后重试', 2600);
+                    logListImportFailure('[Popup] 导入题单提示：', error);
+                    showToast(resolveErrorMessage(error) || '导入失败，请稍后重试', 2600);
                 } finally {
                     setListImportPending(false);
                 }
@@ -378,7 +416,7 @@
             if (noteTarget) {
                 const notesUrl = buildNotesPageUrl(noteTarget);
                 if (!notesUrl) {
-                    showToast('当前题目缺少可用链接，无法打开笔记');
+                    showToast('当前题目缺少可用标识，无法打开笔记');
                     return;
                 }
                 try {
@@ -442,8 +480,8 @@
                     showToast('请先在题目详情页加入复习计划');
                     return;
                 }
-                if (reviewMeta.reviewedToday) {
-                    showToast('当前题目今天已经复习过了，不要重复复习');
+                if (reviewMeta.ratedToday || reviewMeta.reviewedToday) {
+                    showToast('当前题目今天已经记录过评分，请明天再复习');
                     return;
                 }
 
@@ -480,8 +518,8 @@
                         nowTime: reviewNowTime
                     });
                     if (!result || result.success === false) {
-                        if (result && result.reason === 'already_reviewed_today') {
-                            showToast('当前题目今天已经复习过了，不要重复复习');
+                        if (result && result.reason === 'already_rated_today') {
+                            showToast('当前题目今天已经记录过评分，请明天再复习');
                             return;
                         }
                         if (result && result.reason === 'unsupported') {

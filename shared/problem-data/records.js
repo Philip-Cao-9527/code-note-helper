@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录模块
- * 版本：1.1.0
+ * 版本：1.1.1
  */
 
 (function () {
@@ -36,6 +36,15 @@
     const buildDefaultReviewState = reviewDomain.buildDefaultReviewState;
     const parseRating = reviewDomain.parseRating;
     const forgettingCurve = reviewDomain.forgettingCurve;
+
+    function getLocalDateKeyFromTime(input) {
+        const date = input instanceof Date ? input : new Date(input || Date.now());
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
     function parseTorchCodeNotebookPath(pathname) {
         const matchers = [
@@ -232,7 +241,41 @@
             };
         }
 
+        if (site === 'deep-ml.com') {
+            const baseUrl = `https://${site}/problems/${problemKey}`;
+            return {
+                supported: true,
+                type: 'deepml_problem',
+                site,
+                problemKey,
+                canonicalId: `deepml:${problemKey}`,
+                url: baseUrl,
+                baseUrl
+            };
+        }
+
+        if (site === 'duoan-torchcode.hf.space') {
+            const baseUrl = `https://${site}/tree/${problemKey}.ipynb`;
+            return {
+                supported: true,
+                type: 'torchcode_notebook',
+                site,
+                problemKey,
+                canonicalId: `torchcode:${problemKey}`,
+                url: baseUrl,
+                baseUrl,
+                notebookPath: `${problemKey}.ipynb`,
+                notebookFileName: `${problemKey}.ipynb`,
+                notebookSlug: problemKey
+            };
+        }
+
         return null;
+    }
+
+    function buildProblemUrlFromSiteAndProblemKey(site, problemKey) {
+        const identity = createIdentityFromSiteAndProblemKey(site, problemKey);
+        return identity && identity.supported ? (identity.url || identity.baseUrl || '') : '';
     }
 
     function createEmptyRecord(identity, title, now) {
@@ -440,8 +483,11 @@
     }
 
     async function trackProblemAction(options) {
-        const { url, title, actionType, noteContent, rating, nowTime: inputNowTime } = options || {};
-        const identity = extractProblemIdentity(url);
+        const { url, title, actionType, noteContent, rating, site, problemKey, nowTime: inputNowTime } = options || {};
+        let identity = extractProblemIdentity(url);
+        if ((!identity || !identity.supported) && site && problemKey) {
+            identity = createIdentityFromSiteAndProblemKey(site, problemKey);
+        }
         if (!identity || !identity.supported) {
             console.warn('[ProblemData] 当前地址不支持记录：', url);
             return null;
@@ -623,12 +669,12 @@
         const existingRecord = recordsMap[recordId];
         if (existingRecord) {
             const reviewMeta = getRecordReviewMeta(existingRecord, nowTime);
-            if (reviewMeta && reviewMeta.reviewedToday) {
+            if (reviewMeta && (reviewMeta.ratedToday || reviewMeta.reviewedToday)) {
                 return {
                     ...existingRecord,
                     review: normalizeReviewState(existingRecord.review, nowTime),
                     success: false,
-                    reason: 'already_reviewed_today',
+                    reason: 'already_rated_today',
                     isNewRecord: false
                 };
             }
@@ -646,6 +692,88 @@
             ...(result || {}),
             success: Boolean(result),
             reason: result ? 'ok' : 'failed'
+        };
+    }
+
+    async function markProblemReviewReminded(options) {
+        const { url, site, problemKey, title, nowTime: inputNowTime } = options || {};
+        let identity = extractProblemIdentity(url);
+        if ((!identity || !identity.supported) && site && problemKey) {
+            identity = createIdentityFromSiteAndProblemKey(site, problemKey);
+        }
+        if (!identity || !identity.supported) {
+            return {
+                success: false,
+                reason: 'unsupported'
+            };
+        }
+        if (!isLeetcodeSite(identity.site)) {
+            return {
+                success: false,
+                reason: 'site_not_supported'
+            };
+        }
+
+        const resolvedNowTime = Number(inputNowTime);
+        const nowTime = Number.isFinite(resolvedNowTime) ? resolvedNowTime : Date.now();
+        const nowDate = new Date(nowTime);
+        const nowIso = nowDate.toISOString();
+        const todayKey = getLocalDateKeyFromTime(nowTime);
+
+        const recordsMap = await getProblemRecords();
+        const recordId = buildRecordId(identity);
+        const existingRecord = recordsMap[recordId];
+        const baseRecord = existingRecord || createEmptyRecord(identity, title, nowIso);
+        const reviewState = normalizeReviewState(baseRecord.review, nowTime);
+        const reviewMeta = getRecordReviewMeta(baseRecord, nowTime);
+        if (reviewMeta && (reviewMeta.ratedToday || reviewMeta.reviewedToday)) {
+            return {
+                ...baseRecord,
+                review: reviewState,
+                success: false,
+                reason: 'already_rated_today',
+                isNewRecord: !existingRecord
+            };
+        }
+        if (reviewMeta && reviewMeta.remindedToday) {
+            return {
+                ...baseRecord,
+                review: reviewState,
+                success: false,
+                reason: 'already_reminded_today',
+                isNewRecord: !existingRecord
+            };
+        }
+
+        const updatedRecord = {
+            ...baseRecord,
+            id: recordId,
+            canonicalId: identity.canonicalId,
+            site: identity.site,
+            problemKey: identity.problemKey,
+            title: title || baseRecord.title || identity.problemKey || '未命名题目',
+            url: identity.url || baseRecord.url || '',
+            baseUrl: identity.baseUrl || baseRecord.baseUrl || '',
+            updatedAt: nowIso,
+            review: {
+                ...reviewState,
+                lastRemindedDateKey: todayKey
+            }
+        };
+
+        recordsMap[recordId] = updatedRecord;
+        await syncCore.writeLocalMultiple({
+            [STORAGE_KEYS.problemRecords]: recordsMap
+        }, {
+            autoSync: true,
+            markDirty: true
+        });
+
+        return {
+            ...updatedRecord,
+            success: true,
+            reason: 'ok',
+            isNewRecord: !existingRecord
         };
     }
 
@@ -683,6 +811,8 @@
         isLeetcodeSite,
         isDeepLearningSite,
         buildRecordId,
+        createIdentityFromSiteAndProblemKey,
+        buildProblemUrlFromSiteAndProblemKey,
         createEmptyRecord,
         getRecordStageCode,
         getRecordStage,
@@ -702,6 +832,7 @@
         trackProblemAction,
         getReviewRatingPreviews,
         rateProblemMemory,
+        markProblemReviewReminded,
         deleteProblemRecord,
         saveProblemNote
     };

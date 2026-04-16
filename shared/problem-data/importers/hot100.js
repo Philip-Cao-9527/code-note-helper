@@ -1,6 +1,6 @@
 /**
  * 题单导入器（Hot100 / 面试经典150 / 灵神白名单题单）
- * 版本：1.0.61
+ * 版本：1.1.1
  */
 
 (function () {
@@ -348,7 +348,9 @@
         const targetDiscussId = resolveWhitelistedDiscussId(target.discussId);
         const resolvedDiscussId = qaDiscussId || targetDiscussId;
         if (!resolvedDiscussId) {
-            throw new Error('该讨论帖暂不在支持范围内。当前支持灵神白名单题单、Hot100 和面试经典 150。');
+            const error = new Error('该讨论帖暂不在支持范围内。当前支持灵神白名单题单、Hot100 和面试经典 150。');
+            error.code = 'unsupported_list_source';
+            throw error;
         }
 
         const content = String(qaQuestion?.content || '');

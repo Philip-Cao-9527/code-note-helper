@@ -1,6 +1,6 @@
 ﻿/**
  * 高级设置页脚本
- * 版本：1.0.83
+ * 版本：1.1.1
  */
 
 (function () {
@@ -73,6 +73,32 @@
             restore: stageFallback.restore
         };
         return actionFallback[action] || '同步失败，请稍后重试';
+    }
+
+    function resolveErrorMessage(error) {
+        if (error && typeof error.message === 'string') {
+            return error.message.trim();
+        }
+        return String(error || '').trim();
+    }
+
+    function isExpectedWebdavFailure(error) {
+        const stage = String(error && error.stage || '').trim();
+        if (stage === 'config' || stage === 'connect' || stage === 'directory' || stage === 'upload' || stage === 'restore') {
+            return true;
+        }
+        const message = resolveErrorMessage(error);
+        if (!message) return false;
+        const normalized = message.toLowerCase();
+        return normalized.includes('请求超时') || normalized.includes('timeout');
+    }
+
+    function logWebdavFailure(prefix, error) {
+        if (isExpectedWebdavFailure(error)) {
+            // 可预期网络失败（超时/连接异常等）只走界面提示，不写控制台错误或警告。
+            return;
+        }
+        console.error(prefix, error);
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -317,7 +343,7 @@
                 await loadSyncSection();
                 showToast('连接成功，可以开始备份');
             } catch (error) {
-                console.error('[Options] 测试坚果云失败：', error);
+                logWebdavFailure('[Options] 测试坚果云提示：', error);
                 showToast(formatWebdavErrorMessage(error, 'test'), 3200);
             } finally {
                 setBusy(elements.btnTestWebdav, false);
@@ -332,7 +358,7 @@
                 await loadSyncSection();
                 showToast('完整备份已上传到坚果云');
             } catch (error) {
-                console.error('[Options] 备份到坚果云失败：', error);
+                logWebdavFailure('[Options] 备份到坚果云提示：', error);
                 showToast(formatWebdavErrorMessage(error, 'backup'), 3200);
             } finally {
                 setBusy(elements.btnBackupWebdav, false);
@@ -347,7 +373,7 @@
                 await refreshView();
                 showToast('云端数据已恢复到当前浏览器');
             } catch (error) {
-                console.error('[Options] 从坚果云恢复失败：', error);
+                logWebdavFailure('[Options] 从坚果云恢复提示：', error);
                 showToast(formatWebdavErrorMessage(error, 'restore'), 3200);
             } finally {
                 setBusy(elements.btnRestoreWebdav, false);

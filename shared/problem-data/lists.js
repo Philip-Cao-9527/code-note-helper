@@ -1,6 +1,6 @@
 /**
  * 题单模块
- * 版本：1.0.62
+ * 版本：1.1.1
  */
 
 (function () {
@@ -28,7 +28,9 @@
 
         const importer = registry.find((item) => typeof item.match === 'function' && item.match(normalizedUrl));
         if (!importer || typeof importer.importFromUrl !== 'function') {
-            throw new Error('该 URL 暂时不支持导入。当前支持 Hot100、面试经典 150、灵神白名单题单（支持 circle/discuss 与 discuss/post 链接）。');
+            const error = new Error('该 URL 暂时不支持导入。当前支持 Hot100、面试经典 150、灵神白名单题单（支持 circle/discuss 与 discuss/post 链接）。');
+            error.code = 'unsupported_list_source';
+            throw error;
         }
         return importer.importFromUrl(normalizedUrl);
     }
@@ -80,7 +82,9 @@
         const nextList = await resolveProblemListFromUrl(url || HOT100_CONFIG.sourceUrl);
         const currentLists = await getProblemLists();
         if (currentLists[nextList.listId]) {
-            throw new Error('当前题单已经存在，无需重复导入。');
+            const error = new Error('当前题单已经存在，无需重复导入。');
+            error.code = 'list_exists';
+            throw error;
         }
         return saveProblemList(nextList, { autoSync: true });
     }

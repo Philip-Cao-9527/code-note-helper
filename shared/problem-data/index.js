@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录共享仓库组装入口
- * 版本：1.1.0
+ * 版本：1.1.1
  */
 
 (function () {
@@ -22,6 +22,8 @@
             ACTION_LABELS: constants.ACTION_LABELS,
             PAGE_SIZE: constants.PAGE_SIZE,
             extractProblemIdentity: records.extractProblemIdentity,
+            createIdentityFromSiteAndProblemKey: records.createIdentityFromSiteAndProblemKey,
+            buildProblemUrlFromSiteAndProblemKey: records.buildProblemUrlFromSiteAndProblemKey,
             isLeetcodeSite: records.isLeetcodeSite,
             isDeepLearningSite: records.isDeepLearningSite,
             getActionLabel: records.getActionLabel,
@@ -35,6 +37,7 @@
             trackProblemAction: records.trackProblemAction,
             getReviewRatingPreviews: records.getReviewRatingPreviews,
             rateProblemMemory: records.rateProblemMemory,
+            markProblemReviewReminded: records.markProblemReviewReminded,
             deleteProblemRecord: records.deleteProblemRecord,
             saveProblemNote: records.saveProblemNote,
             getProblemLists: lists.getProblemLists,

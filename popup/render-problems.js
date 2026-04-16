@@ -1,6 +1,6 @@
 /**
  * Popup 题目页渲染
- * 版本：1.1.0
+ * 版本：1.1.1
  */
 
 (function () {
@@ -216,6 +216,10 @@
                 type="button"
                 class="row-action-btn note"
                 data-open-note-url="${stateUtils.escapeHtml(openUrl)}"
+                data-open-note-site="${stateUtils.escapeHtml(record.site || '')}"
+                data-open-note-problem-key="${stateUtils.escapeHtml(record.problemKey || '')}"
+                data-open-note-canonical-id="${stateUtils.escapeHtml(record.canonicalId || '')}"
+                data-open-note-title-slug="${stateUtils.escapeHtml(record.titleSlug || '')}"
                 data-open-note-title="${stateUtils.escapeHtml(record.title || record.problemKey || '未命名题目')}"
                 data-open-note-source="${stateUtils.escapeHtml(source)}"
                 title="打开笔记">

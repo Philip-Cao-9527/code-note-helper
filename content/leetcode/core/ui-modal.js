@@ -1,6 +1,6 @@
 ﻿/**
  * LeetCode 笔记助手 UI 模块
- * 版本：1.1.0
+ * 版本：1.1.1
  */
 
 (function () {
@@ -386,6 +386,57 @@
         showToast('✅ 提交通过，点击右下角按钮记录记忆状态', 3200);
     }
 
+    async function maybeTriggerReviewReminder(record, nowTime = Date.now()) {
+        const store = getProblemDataStore();
+        if (!store || !record || typeof store.getRecordReviewMeta !== 'function') {
+            return false;
+        }
+
+        let reviewMeta;
+        try {
+            reviewMeta = store.getRecordReviewMeta(record, nowTime);
+        } catch (error) {
+            console.warn('[Note Helper] 读取复习提醒状态失败：', error);
+            return false;
+        }
+
+        if (!reviewMeta || !reviewMeta.isLeetcode) {
+            return false;
+        }
+        // 优先规则：今天已评分则不提醒；未评分时今天已提醒也不重复提醒。
+        if (reviewMeta.ratedToday || reviewMeta.reviewedToday) {
+            return false;
+        }
+        if (reviewMeta.remindedToday) {
+            return false;
+        }
+
+        if (typeof store.markProblemReviewReminded === 'function') {
+            try {
+                const markResult = await store.markProblemReviewReminded({
+                    url: record.url || record.baseUrl || window.location.href,
+                    site: record.site,
+                    problemKey: record.problemKey,
+                    title: record.title || getCurrentProblemRecordTitle(),
+                    nowTime
+                });
+                if (!markResult || markResult.success === false) {
+                    if (markResult && (markResult.reason === 'already_rated_today' || markResult.reason === 'already_reminded_today')) {
+                        return false;
+                    }
+                    console.warn('[Note Helper] 写入复习提醒状态失败：', markResult);
+                    return false;
+                }
+            } catch (error) {
+                console.warn('[Note Helper] 写入复习提醒状态失败：', error);
+                return false;
+            }
+        }
+
+        triggerReviewReminder();
+        return true;
+    }
+
     function buildReviewDialogOption(option) {
         const previewText = String(option.previewText || '').trim() || '计算中';
         return `
@@ -709,7 +760,7 @@
                     trackKey,
                     problemId: existingRecord.id
                 });
-                triggerReviewReminder();
+                await maybeTriggerReviewReminder(existingRecord);
                 return false;
             }
 
@@ -723,7 +774,7 @@
             markSubmissionTracked(trackKey);
             clearSubmitIntent(intentState.intentKey);
             showToast('✅ 检测到提交通过，已自动加入题目记录', 2600);
-            triggerReviewReminder();
+            await maybeTriggerReviewReminder(actionResult);
             return true;
         } finally {
             trackingSubmissionInFlight.delete(trackKey);
@@ -1614,8 +1665,8 @@
                         currentRecord = await store.getProblemRecordByUrl(window.location.href);
                         if (currentRecord) {
                             const reviewMeta = store.getRecordReviewMeta(currentRecord);
-                            if (reviewMeta && reviewMeta.reviewedToday) {
-                                showToast('ℹ️ 当前题目今天已经复习过了，不要重复复习', 2600);
+                            if (reviewMeta && (reviewMeta.ratedToday || reviewMeta.reviewedToday)) {
+                                showToast('ℹ️ 当前题目今天已经记录过评分，请明天再复习', 2600);
                                 return;
                             }
                         }
@@ -1654,8 +1705,8 @@
                     });
 
                     if (!result || result.success === false) {
-                        if (result && result.reason === 'already_reviewed_today') {
-                            showToast('ℹ️ 当前题目今天已经复习过了，不要重复复习', 2600);
+                        if (result && result.reason === 'already_rated_today') {
+                            showToast('ℹ️ 当前题目今天已经记录过评分，请明天再复习', 2600);
                             return;
                         }
                         showToast('⚠️ 当前页面暂不支持复习评分', 2800);
@@ -2053,5 +2104,3 @@ ${content}`;
 
     window.NoteHelperUI = { init };
 })();
-
-
