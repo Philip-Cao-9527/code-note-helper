@@ -79,9 +79,21 @@ input {
 
 .brand-subtitle {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+
+.brand-subtitle-key {
+  display: inline-block;
+  padding: 0 6px;
+  margin: 0 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(14, 165, 233, 0.18);
+  color: #dbeafe;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .version-pill {
