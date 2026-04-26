@@ -1,6 +1,6 @@
 ﻿/**
  * Popup 入口脚本
- * 版本：1.1.0
+ * 版本：1.1.2
  */
 
 (function () {
@@ -96,7 +96,7 @@
             renderOverview.renderOverview(elements, state);
             renderProblems.renderLeetcodeProblems(elements, state, store);
             renderProblems.renderDeepmlProblems(elements, state, store);
-            renderLists.renderLists(elements, state);
+            renderLists.renderLists(elements, state, store);
         }
 
         function clearSyncIndicatorTimer() {

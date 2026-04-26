@@ -1,6 +1,6 @@
 /**
  * Popup 交互动作
- * 版本：1.1.1
+ * 版本：1.1.2
  */
 
 (function () {
@@ -412,6 +412,35 @@
         }
 
         async function handleActionClick(target) {
+            const deleteListItemTarget = target.closest('[data-delete-list-item]');
+            if (deleteListItemTarget) {
+                const listId = String(deleteListItemTarget.getAttribute('data-delete-list-id') || '').trim();
+                const orderValue = Number(deleteListItemTarget.getAttribute('data-delete-list-item-order'));
+                const itemIdentity = {
+                    order: Number.isFinite(orderValue) ? orderValue : null,
+                    canonicalId: String(deleteListItemTarget.getAttribute('data-delete-list-item-canonical-id') || '').trim(),
+                    titleSlug: String(deleteListItemTarget.getAttribute('data-delete-list-item-title-slug') || '').trim(),
+                    problemKey: String(deleteListItemTarget.getAttribute('data-delete-list-item-problem-key') || '').trim(),
+                    url: String(deleteListItemTarget.getAttribute('data-delete-list-item-url') || '').trim()
+                };
+                const confirmed = await showConfirm('确认从当前题单中移除这道题吗？这不会删除你的题目记录、笔记和复习状态。');
+                if (!confirmed) return;
+
+                try {
+                    const deleted = await store.deleteProblemListItem(listId, itemIdentity);
+                    if (!deleted) {
+                        showToast('没有找到要移除的题单条目，请刷新后重试');
+                        return;
+                    }
+                    await refreshData();
+                    showToast('已从当前题单移除');
+                } catch (error) {
+                    console.error('[Popup] 从题单移除题目失败：', error);
+                    showToast(error.message || '移除失败，请稍后重试');
+                }
+                return;
+            }
+
             const noteTarget = target.closest('[data-open-note-url]');
             if (noteTarget) {
                 const notesUrl = buildNotesPageUrl(noteTarget);

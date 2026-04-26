@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录共享仓库组装入口
- * 版本：1.1.1
+ * 版本：1.1.2
  */
 
 (function () {
@@ -47,6 +47,7 @@
             importProblemListFromUrl: lists.importProblemListFromUrl,
             importHot100StudyPlan: lists.importHot100StudyPlan,
             deleteProblemList: lists.deleteProblemList,
+            deleteProblemListItem: lists.deleteProblemListItem,
             getSyncMeta: syncCore.getSyncMeta,
             getSyncSettings: syncCore.getSyncSettings,
             setSyncSettings: syncCore.setSyncSettings,

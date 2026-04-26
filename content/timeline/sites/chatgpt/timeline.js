@@ -1,6 +1,6 @@
 ﻿/**
  * AI 对话时间轴 内容脚本 - ChatGPT
- * 版本：1.0.80
+ * 版本：1.1.2
  * 基线：7ef0d64（v1.0.18）+ 深色模式增强
  */
 
@@ -11,7 +11,7 @@
     if (window.__AI_TIMELINE_INJECTED__) return;
     window.__AI_TIMELINE_INJECTED__ = true;
 
-    console.log('[AI Timeline] Content script loaded (v1.0.80)');
+    console.log('[AI Timeline] Content script loaded (v1.1.2)');
 
     // === 配置 ===
     const CONFIG = {
@@ -43,6 +43,7 @@
             if (path.includes('/share/')) return true;
             return false;
         },
+        turnSelector: 'section[data-testid^="conversation-turn-"]',
         userMessageSelector: '[data-message-author-role="user"]',
         aiMessageSelector: '[data-message-author-role="assistant"]',
         extractUserText: (el) => {
@@ -68,7 +69,7 @@
             return null;
         },
         timelinePosition: { top: '80px', right: '16px', bottom: '100px' },
-        scrollContainerSelector: 'main [class*="react-scroll-to-bottom"] > div, main div[class*="overflow-y-auto"], main .overflow-y-auto'
+        scrollContainerSelector: '[data-scroll-root], [class*="group/scroll-root"], main [class*="react-scroll-to-bottom"] > div, main div[class*="overflow-y-auto"], main .overflow-y-auto'
     };
 
     // === 工具函数 ===
@@ -121,14 +122,23 @@
         return Math.abs(hash).toString(36);
     }
 
-    async function copyToClipboard(text, btn) {
+    function normalizeText(value) {
+        return String(value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function parseConversationTurnNumber(testId) {
+        const match = String(testId || '').match(/conversation-turn-(\d+)/);
+        return match ? Number(match[1]) : -1;
+    }
+
+    async function copyToClipboard(text, btn, resetText = '复制提问') {
         try {
             await navigator.clipboard.writeText(text);
             btn.classList.add('copied');
             btn.querySelector('span').textContent = '已复制!';
             setTimeout(() => {
                 btn.classList.remove('copied');
-                btn.querySelector('span').textContent = '复制提问';
+                btn.querySelector('span').textContent = resetText;
             }, 1500);
         } catch (err) {
             const textarea = document.createElement('textarea');
@@ -164,6 +174,7 @@
             this.currentHoverNode = null;
             this.isMouseOverTooltip = false;
             this.isMouseOverHitZone = false;
+            this.pendingChatgptHydrations = new Set();
             this.mutationObserver = null;
             this.scrollSyncRAF = null;
             this.pollIntervalId = null;
@@ -188,6 +199,48 @@
             return `hash-${hash}-len${textLen}`;
         }
 
+        getPrimaryMessageSelector() {
+            return this.adapter.turnSelector || this.adapter.userMessageSelector;
+        }
+
+        findFirstTimelineAnchor() {
+            return document.querySelector(this.getPrimaryMessageSelector())
+                || document.querySelector(this.adapter.userMessageSelector)
+                || document.querySelector(this.adapter.aiMessageSelector);
+        }
+
+        getTimelineItemDomCount() {
+            if (this.adapter.name === 'ChatGPT') {
+                return this.collectChatgptTurnTimelineItems().length;
+            }
+            const primarySelector = this.getPrimaryMessageSelector();
+            const primaryCount = primarySelector ? document.querySelectorAll(primarySelector).length : 0;
+            if (primaryCount > 0) return primaryCount;
+            return document.querySelectorAll(this.adapter.userMessageSelector).length;
+        }
+
+        waitForConversationElement(timeout = 15000) {
+            return new Promise((resolve) => {
+                const check = () => this.findFirstTimelineAnchor();
+                const existing = check();
+                if (existing) return resolve(existing);
+
+                const observer = new MutationObserver(() => {
+                    const el = check();
+                    if (el) {
+                        observer.disconnect();
+                        resolve(el);
+                    }
+                });
+
+                observer.observe(document.body, { childList: true, subtree: true });
+                setTimeout(() => {
+                    observer.disconnect();
+                    resolve(check());
+                }, timeout);
+            });
+        }
+
         async init() {
             // 【修复】防止重复初始化
             if (this.isInitialized) {
@@ -196,7 +249,7 @@
             }
             console.log(`[AI Timeline] Waiting for ${this.adapter.name} page load...`);
 
-            const el = await this.waitForElement(this.adapter.userMessageSelector);
+            const el = await this.waitForConversationElement();
             if (!el) {
                 console.debug('[AI Timeline] 未找到消息元素');
                 setTimeout(() => this.init(), 2000);
@@ -212,6 +265,7 @@
             this.fullRebuild();
             this.setupEventListeners();
             this.setupObservers();
+            requestAnimationFrame(() => this.handleScroll?.());
             this.isInitialized = true; // 【修复】标记已初始化
 
             console.log(`[AI Timeline] Init done, found ${this.messageMap.size} messages`);
@@ -233,33 +287,11 @@
         }
 
         findContainers() {
-            // ChatGPT 特殊处理：直接使用文档级滚动容器
-            // 经测试发现 ChatGPT 的实际滚动发生在 document.scrollingElement 上
-            // 而不是页面中的 div.overflow-y-auto 元素
-            if (this.adapter.name === 'ChatGPT') {
-                const firstMessage = document.querySelector(this.adapter.userMessageSelector);
-                if (!firstMessage) {
-                    console.debug('[AI Timeline] 未找到消息元素');
-                    return false;
-                }
-
-                let parent = firstMessage.parentElement;
-                while (parent && parent !== document.body) {
-                    if (parent.querySelectorAll(this.adapter.userMessageSelector).length > 0) this.container = parent;
-                    parent = parent.parentElement;
-                }
-                if (!this.container) this.container = firstMessage.parentElement;
-
-                this.scrollContainer = document.scrollingElement || document.documentElement;
-                console.log('[AI Timeline] ChatGPT: 使用文档级滚动容器');
-                return true;
-            }
-
             // 检测元素是否具有滚动能力（放宽条件：只检查 overflow 属性）
             const hasScrollCapability = (el) => {
                 if (!el) return false;
                 const style = window.getComputedStyle(el);
-                const hasOverflow = style.overflowY === 'auto' || style.overflowY === 'scroll';
+                const hasOverflow = style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflowY === 'overlay';
                 return hasOverflow;
             };
 
@@ -269,28 +301,59 @@
                 return el.scrollHeight > el.clientHeight + 10;
             };
 
+            const primarySelector = this.getPrimaryMessageSelector();
+            const firstMessage = this.findFirstTimelineAnchor();
+            if (!firstMessage) {
+                console.debug('[AI Timeline] 未找到消息元素');
+                return false;
+            }
+
             // 1. 优先使用适配器指定的选择器
             if (this.adapter.scrollContainerSelector) {
-                const candidates = document.querySelectorAll(this.adapter.scrollContainerSelector);
+                const candidates = Array.from(document.querySelectorAll(this.adapter.scrollContainerSelector))
+                    .filter((candidate) => candidate.contains(firstMessage) || candidate.querySelector(primarySelector));
                 console.log(`[AI Timeline] 候选滚动容器数量: ${candidates.length}`);
 
+                const scoreCandidate = (candidate) => {
+                    if (!candidate) return -Infinity;
+                    const style = window.getComputedStyle(candidate);
+                    const className = String(candidate.className || '');
+                    let score = 0;
+                    if (hasScrollCapability(candidate)) score += 100;
+                    if (hasActualScroll(candidate)) score += 200;
+                    if (candidate.contains(firstMessage)) score += 60;
+                    if (candidate.querySelector(primarySelector)) score += 40;
+                    if (this.adapter.turnSelector && candidate.querySelector(this.adapter.turnSelector)) score += 30;
+                    if (candidate.scrollTop > 0) score += 120;
+                    if (className.includes('group/scroll-root')) score += 90;
+                    if (className.includes('overflow-y-auto')) score += 50;
+                    if (candidate.tagName === 'MAIN' && style.overflowY !== 'auto' && style.overflowY !== 'scroll' && style.overflowY !== 'overlay') {
+                        score -= 120;
+                    }
+                    return score;
+                };
+
+                const rankedCandidates = candidates
+                    .map((candidate) => ({ candidate, score: scoreCandidate(candidate) }))
+                    .sort((left, right) => right.score - left.score);
+
                 // 第一轮：找有实际滚动内容的容器
-                for (const candidate of candidates) {
+                for (const { candidate } of rankedCandidates) {
                     if (hasScrollCapability(candidate) && hasActualScroll(candidate)) {
                         this.scrollContainer = candidate;
-                        const firstMessage = candidate.querySelector(this.adapter.userMessageSelector);
-                        this.container = firstMessage ? firstMessage.parentElement : candidate;
+                        const firstAnchor = candidate.querySelector(primarySelector) || candidate.querySelector(this.adapter.userMessageSelector);
+                        this.container = firstAnchor ? firstAnchor.parentElement : candidate;
                         console.log('[AI Timeline] 使用指定容器(有滚动):', candidate.tagName, candidate.className?.substring(0, 60));
                         return true;
                     }
                 }
 
                 // 第二轮：找有 overflow 属性的容器（即使当前没有滚动内容）
-                for (const candidate of candidates) {
+                for (const { candidate } of rankedCandidates) {
                     if (hasScrollCapability(candidate)) {
                         this.scrollContainer = candidate;
-                        const firstMessage = candidate.querySelector(this.adapter.userMessageSelector);
-                        this.container = firstMessage ? firstMessage.parentElement : candidate;
+                        const firstAnchor = candidate.querySelector(primarySelector) || candidate.querySelector(this.adapter.userMessageSelector);
+                        this.container = firstAnchor ? firstAnchor.parentElement : candidate;
                         console.log('[AI Timeline] 使用指定容器(overflow):', candidate.tagName, candidate.className?.substring(0, 60));
                         return true;
                     }
@@ -298,18 +361,12 @@
             }
 
             // 2. 从消息元素向上查找
-            const firstMessage = document.querySelector(this.adapter.userMessageSelector);
-            if (!firstMessage) {
-                console.debug('[AI Timeline] 未找到消息元素');
-                return false;
-            }
-
             let parent = firstMessage.parentElement;
             while (parent && parent !== document.body) {
-                if (parent.querySelectorAll(this.adapter.userMessageSelector).length > 0) this.container = parent;
+                if (parent.querySelectorAll(primarySelector).length > 0) this.container = parent;
                 parent = parent.parentElement;
             }
-            if (!this.container) this.container = firstMessage.parentElement;
+            if (!this.container) this.container = firstMessage.parentElement || firstMessage;
 
             // 3. 递归查找具有滚动能力的容器
             parent = this.container;
@@ -403,30 +460,234 @@
             this.ui.hitZone = hitZone;
         }
 
+        collectUserTimelineItems() {
+            return Array.from(document.querySelectorAll(this.adapter.userMessageSelector)).map((el, index) => {
+                const text = this.adapter.extractUserText(el);
+                return {
+                    stableId: this.generateStableId(el, index),
+                    el,
+                    text,
+                    fullText: text,
+                    label: '提问',
+                    copyLabel: '复制提问',
+                    sequence: index
+                };
+            });
+        }
+
+        shouldInferChatgptUserTurn(section, turnNumber, hasMountedConversation) {
+            if (!hasMountedConversation) return false;
+            if (!Number.isFinite(turnNumber) || turnNumber <= 0) return false;
+            if (section.querySelector(this.adapter.userMessageSelector) || section.querySelector(this.adapter.aiMessageSelector)) {
+                return false;
+            }
+            if (normalizeText(section.textContent)) {
+                return false;
+            }
+            // 真实 Edge 下 conversation-turn section 会保留，但早期 user 子节点可能未挂载。
+            // 现有证据表明这些旧回合仍按 user / assistant 交替编号，因此只谨慎补回奇数 user turn，
+            // 明确排除 assistant section，避免把回答节点混入时间轴。
+            return turnNumber % 2 === 1;
+        }
+
+        findChatgptTurnAnchor(section) {
+            if (!section) return null;
+            return section.closest('[data-turn-id-container]')
+                || section.closest(this.adapter.turnSelector)
+                || section;
+        }
+
+        buildChatgptUserTimelineItem(section, index, userEl, userText, turnNumber, sectionTestId, inferred) {
+            const fallbackTurnNumber = turnNumber > 0 ? turnNumber : (index + 1);
+            const placeholderText = `第 ${fallbackTurnNumber} 轮提问`;
+            const fullText = userText || normalizeText(section.textContent) || placeholderText;
+            const anchorEl = this.findChatgptTurnAnchor(section) || userEl || section;
+            return {
+                stableId: sectionTestId ? `turn-${sectionTestId}` : `turn-index-${index}`,
+                el: anchorEl,
+                sectionTestId,
+                text: fullText,
+                fullText,
+                label: '提问',
+                copyLabel: '复制提问',
+                sequence: fallbackTurnNumber,
+                inferred: Boolean(inferred),
+                needsHydration: Boolean(inferred) && fullText === placeholderText
+            };
+        }
+
+        isChatgptPlaceholderMessage(msg) {
+            if (!msg || !msg.needsHydration) return false;
+            return normalizeText(msg.fullText || msg.text) === `第 ${msg.sequence} 轮提问`;
+        }
+
+        findChatgptSection(sectionTestId) {
+            if (!sectionTestId) return null;
+            return document.querySelector(`section[data-testid="${sectionTestId}"]`);
+        }
+
+        readChatgptUserTextFromSection(section) {
+            if (!section) return '';
+            const userEl = section.querySelector(this.adapter.userMessageSelector);
+            return userEl ? this.adapter.extractUserText(userEl) : '';
+        }
+
+        updateTimelineItemText(id, nextText) {
+            const normalizedText = normalizeText(nextText);
+            if (!normalizedText) return false;
+            const msg = this.messageMap.get(id);
+            if (!msg) return false;
+
+            msg.text = normalizedText;
+            msg.fullText = normalizedText;
+            msg.needsHydration = false;
+            msg.inferred = false;
+
+            const rendered = this.renderedNodes.get(id);
+            if (rendered) {
+                rendered.text = normalizedText.substring(0, CONFIG.PREVIEW_TEXT_LENGTH)
+                    + (normalizedText.length > CONFIG.PREVIEW_TEXT_LENGTH ? '...' : '');
+            }
+
+            if (this.currentHoverNode && this.currentHoverNode.dataset.id === id) {
+                this.showTooltip(this.currentHoverNode);
+            }
+            return true;
+        }
+
+        getScrollTopForTarget(targetEl) {
+            if (!this.scrollContainer || !targetEl) return 0;
+            const containerRect = this.scrollContainer.getBoundingClientRect();
+            const targetRect = targetEl.getBoundingClientRect();
+            return Math.max(0, this.scrollContainer.scrollTop + targetRect.top - containerRect.top - 16);
+        }
+
+        scheduleChatgptHydration(id, options = {}) {
+            if (this.adapter.name !== 'ChatGPT') return;
+            if (!id || this.pendingChatgptHydrations.has(id)) return;
+
+            const msg = this.messageMap.get(id);
+            if (!this.isChatgptPlaceholderMessage(msg)) return;
+
+            const section = this.findChatgptSection(msg.sectionTestId);
+            if (!section || !this.scrollContainer) return;
+
+            const directText = this.readChatgptUserTextFromSection(section);
+            if (this.updateTimelineItemText(id, directText)) {
+                return;
+            }
+
+            this.pendingChatgptHydrations.add(id);
+            const restoreScrollTop = Number.isFinite(options.restoreScrollTop) ? options.restoreScrollTop : null;
+            const targetAnchor = this.findChatgptTurnAnchor(section) || section;
+            const targetTop = this.getScrollTopForTarget(targetAnchor);
+            if (restoreScrollTop === null || Math.abs(this.scrollContainer.scrollTop - targetTop) > 2) {
+                this.scrollContainer.scrollTop = targetTop;
+            }
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const hydratedSection = this.findChatgptSection(msg.sectionTestId);
+                    const hydratedText = this.readChatgptUserTextFromSection(hydratedSection);
+                    if (restoreScrollTop !== null && this.scrollContainer) {
+                        this.scrollContainer.scrollTop = restoreScrollTop;
+                    }
+                    this.updateTimelineItemText(id, hydratedText);
+                    this.pendingChatgptHydrations.delete(id);
+                });
+            });
+        }
+
+        collectChatgptTurnTimelineItems() {
+            const sections = Array.from(document.querySelectorAll(this.adapter.turnSelector))
+                .sort((left, right) => parseConversationTurnNumber(left.getAttribute('data-testid')) - parseConversationTurnNumber(right.getAttribute('data-testid')));
+            if (!sections.length) {
+                return this.collectUserTimelineItems();
+            }
+
+            const hasMountedConversation = sections.some((section) => {
+                return section.querySelector(this.adapter.userMessageSelector)
+                    || section.querySelector(this.adapter.aiMessageSelector);
+            });
+
+            return sections.map((section, index) => {
+                const sectionTestId = String(section.getAttribute('data-testid') || '').trim();
+                const turnNumber = parseConversationTurnNumber(sectionTestId);
+                const userEl = section.querySelector(this.adapter.userMessageSelector);
+                const assistantEl = section.querySelector(this.adapter.aiMessageSelector);
+                const userText = userEl ? this.adapter.extractUserText(userEl) : '';
+                const assistantText = assistantEl ? this.adapter.extractAIText(assistantEl) : '';
+                if (userEl) {
+                    return this.buildChatgptUserTimelineItem(
+                        section,
+                        index,
+                        userEl,
+                        userText,
+                        turnNumber,
+                        sectionTestId,
+                        false
+                    );
+                }
+                if (assistantEl || assistantText) {
+                    return null;
+                }
+                if (!this.shouldInferChatgptUserTurn(section, turnNumber, hasMountedConversation)) {
+                    return null;
+                }
+                return this.buildChatgptUserTimelineItem(
+                    section,
+                    index,
+                    null,
+                    '',
+                    turnNumber,
+                    sectionTestId,
+                    true
+                );
+            }).filter(Boolean);
+        }
+
+        collectTimelineItems() {
+            if (this.adapter.name === 'ChatGPT') {
+                return this.collectChatgptTurnTimelineItems();
+            }
+            return this.collectUserTimelineItems();
+        }
+
         fullRebuild() {
             if (!this.container) return;
 
             this.clearAllTimers();
             this.hideTooltip();
 
-            const userMessages = Array.from(document.querySelectorAll(this.adapter.userMessageSelector));
-            if (userMessages.length === 0) return;
+            const timelineItems = this.collectTimelineItems();
+            if (timelineItems.length === 0) return;
 
             const scrollTop = this.scrollContainer.scrollTop;
             const containerRect = this.scrollContainer.getBoundingClientRect();
 
             const newMessageMap = new Map();
-            userMessages.forEach((el, index) => {
-                const stableId = this.generateStableId(el, index);
-                const rect = el.getBoundingClientRect();
+            timelineItems.forEach((item) => {
+                const rect = item.el.getBoundingClientRect();
                 const absTop = scrollTop + rect.top - containerRect.top;
-                const existing = this.messageMap.get(stableId);
-                newMessageMap.set(stableId, { el, absTop, text: existing?.text || null, stableId });
+                const existing = this.messageMap.get(item.stableId);
+                newMessageMap.set(item.stableId, {
+                    ...item,
+                    absTop,
+                    text: item.text || existing?.text || '',
+                    fullText: item.fullText || existing?.fullText || item.text || '',
+                    label: item.label || existing?.label || '提问',
+                    copyLabel: item.copyLabel || existing?.copyLabel || '复制内容'
+                });
             });
 
             this.messageMap = newMessageMap;
             this.sortedMessages = Array.from(this.messageMap.values());
-            this.sortedMessages.sort((a, b) => a.absTop - b.absTop);
+            this.sortedMessages.sort((a, b) => {
+                if (a.sequence !== b.sequence) {
+                    return a.sequence - b.sequence;
+                }
+                return a.absTop - b.absTop;
+            });
             this.sortedMessages.forEach((msg, i) => msg.index = i);
 
             this.isCompactMode = this.sortedMessages.length > CONFIG.LONG_CONVERSATION_THRESHOLD;
@@ -452,7 +713,12 @@
                 msg.absTop = scrollTop + rect.top - containerRect.top;
             });
 
-            this.sortedMessages.sort((a, b) => a.absTop - b.absTop);
+            this.sortedMessages.sort((a, b) => {
+                if (a.sequence !== b.sequence) {
+                    return a.sequence - b.sequence;
+                }
+                return a.absTop - b.absTop;
+            });
             this.sortedMessages.forEach((msg, i) => msg.index = i);
         }
 
@@ -508,7 +774,9 @@
                     this.ui.trackContent.appendChild(node);
                     this.renderedNodes.set(msg.stableId, {
                         node,
-                        text: (msg.text || '').substring(0, CONFIG.PREVIEW_TEXT_LENGTH) + ((msg.text || '').length > CONFIG.PREVIEW_TEXT_LENGTH ? '...' : '')
+                        text: (msg.text || '').substring(0, CONFIG.PREVIEW_TEXT_LENGTH) + ((msg.text || '').length > CONFIG.PREVIEW_TEXT_LENGTH ? '...' : ''),
+                        label: msg.label || '提问',
+                        copyLabel: msg.copyLabel || '复制内容'
                     });
                 }
                 currentTop += gap;
@@ -534,7 +802,12 @@
                 if (this.tooltipHideTimer) clearTimeout(this.tooltipHideTimer);
                 this.currentHoverNode = node;
                 this.hoverTimer = setTimeout(() => {
-                    if (this.currentHoverNode === node) this.showTooltip(node);
+                    if (this.currentHoverNode === node) {
+                        this.showTooltip(node);
+                        this.scheduleChatgptHydration(node.dataset.id, {
+                            restoreScrollTop: this.scrollContainer ? this.scrollContainer.scrollTop : null
+                        });
+                    }
                 }, CONFIG.HOVER_PREVIEW_DELAY);
             });
 
@@ -544,6 +817,13 @@
                 if (relatedTarget && (this.ui.tooltip?.contains(relatedTarget) || this.ui.hitZone?.contains(relatedTarget))) return;
                 if (this.currentHoverNode === node) this.currentHoverNode = null;
                 this.scheduleTooltipHide();
+            });
+
+            node.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!node.dataset.id) return;
+                if (this.isLongPressed) return;
+                this.scrollToMarker(node.dataset.id);
             });
 
             return node;
@@ -576,7 +856,7 @@
             const currentScrollHeight = this.scrollContainer.scrollHeight;
             if (this.lastScrollHeight && Math.abs(this.lastScrollHeight - currentScrollHeight) > 100) {
                 this.lastScrollHeight = currentScrollHeight;
-                const currentMsgCount = document.querySelectorAll(this.adapter.userMessageSelector).length;
+                const currentMsgCount = this.getTimelineItemDomCount();
                 if (currentMsgCount !== this.messageMap.size) {
                     this.debouncedFullRebuild();
                     return;
@@ -636,14 +916,17 @@
             const data = this.renderedNodes.get(node.dataset.id);
             if (!data || !this.ui.tooltip) return;
 
-            const fullText = this.getFullMessageText(node.dataset.id) || data.text || '';
+            const messageMeta = this.getFullMessageMeta(node.dataset.id);
+            const fullText = messageMeta.text || data.text || '';
+            const labelText = messageMeta.label || data.label || '提问';
+            const copyButtonText = messageMeta.copyLabel || data.copyLabel || (labelText === '提问' ? '复制提问' : '复制内容');
             const previewText = fullText.substring(0, CONFIG.PREVIEW_TEXT_LENGTH);
 
             while (this.ui.tooltip.firstChild) this.ui.tooltip.removeChild(this.ui.tooltip.firstChild);
 
             const labelDiv = document.createElement('div');
             labelDiv.className = 'ai-timeline-tooltip-label';
-            labelDiv.textContent = '提问';
+            labelDiv.textContent = labelText;
 
             const textDiv = document.createElement('div');
             textDiv.className = 'ai-timeline-tooltip-text';
@@ -660,11 +943,11 @@
             svg.appendChild(path);
 
             const span = document.createElement('span');
-            span.textContent = '复制提问';
+            span.textContent = copyButtonText;
 
             copyBtn.appendChild(svg);
             copyBtn.appendChild(span);
-            copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(fullText, copyBtn); };
+            copyBtn.onclick = (e) => { e.stopPropagation(); copyToClipboard(fullText, copyBtn, copyButtonText); };
 
             this.ui.tooltip.appendChild(labelDiv);
             this.ui.tooltip.appendChild(textDiv);
@@ -690,9 +973,24 @@
             }
         }
 
-        getFullMessageText(id) {
+        getFullMessageMeta(id) {
             const msg = this.messageMap.get(id);
-            return msg?.el ? this.adapter.extractUserText(msg.el) : '';
+            if (!msg) {
+                return {
+                    text: '',
+                    label: '提问',
+                    copyLabel: '复制提问'
+                };
+            }
+            return {
+                text: msg.fullText || msg.text || '',
+                label: msg.label || '提问',
+                copyLabel: msg.copyLabel || (msg.label === '提问' ? '复制提问' : '复制内容')
+            };
+        }
+
+        getFullMessageText(id) {
+            return this.getFullMessageMeta(id).text;
         }
 
         hideTooltip() {
@@ -712,20 +1010,61 @@
             this.hoverTimer = this.tooltipHideTimer = this.longPressTimer = null;
         }
 
+        findTimelineAnchorById(id) {
+            const msg = this.messageMap.get(id);
+            if (!msg) return null;
+
+            if (msg.sectionTestId) {
+                const section = document.querySelector(`section[data-testid="${msg.sectionTestId}"]`);
+                if (!section) return null;
+                return this.findChatgptTurnAnchor(section)
+                    || section.querySelector(this.adapter.userMessageSelector)
+                    || section;
+            }
+
+            const userMessages = document.querySelectorAll(this.adapter.userMessageSelector);
+            for (let i = 0; i < userMessages.length; i++) {
+                if (this.generateStableId(userMessages[i], i) === id) {
+                    return userMessages[i];
+                }
+            }
+            return null;
+        }
+
         scrollToMarker(id) {
             const msg = this.messageMap.get(id);
             if (!msg) return;
             let targetEl = msg.el;
+            if (this.adapter.name === 'ChatGPT' && msg.sectionTestId) {
+                const targetSection = this.findChatgptSection(msg.sectionTestId);
+                const stableAnchor = this.findChatgptTurnAnchor(targetSection);
+                if (stableAnchor) {
+                    targetEl = stableAnchor;
+                    msg.el = stableAnchor;
+                }
+            }
             if (!targetEl || !targetEl.isConnected) {
-                const userMessages = document.querySelectorAll(this.adapter.userMessageSelector);
-                for (let i = 0; i < userMessages.length; i++) {
-                    if (this.generateStableId(userMessages[i], i) === id) { targetEl = userMessages[i]; msg.el = targetEl; break; }
+                targetEl = this.findTimelineAnchorById(id);
+                if (targetEl) {
+                    msg.el = targetEl;
                 }
             }
             if (targetEl?.isConnected) {
-                targetEl.scrollIntoView({ behavior: CONFIG.SCROLL_BEHAVIOR, block: 'start' });
+                if (this.scrollContainer && typeof this.scrollContainer.scrollTo === 'function') {
+                    const containerRect = this.scrollContainer.getBoundingClientRect();
+                    const targetRect = targetEl.getBoundingClientRect();
+                    const targetTop = this.scrollContainer.scrollTop + targetRect.top - containerRect.top - 16;
+                    this.scrollContainer.scrollTo({
+                        top: Math.max(0, targetTop),
+                        behavior: CONFIG.SCROLL_BEHAVIOR
+                    });
+                    this.scrollContainer.scrollTop = Math.max(0, targetTop);
+                } else {
+                    targetEl.scrollIntoView({ behavior: CONFIG.SCROLL_BEHAVIOR, block: 'start' });
+                }
                 this.activeNodeId = id;
                 this.renderWindow();
+                this.scheduleChatgptHydration(id);
             } else {
                 this.fullRebuild();
             }
@@ -806,7 +1145,6 @@
         handleMouseDown(e) {
             const node = e.target.closest('.ai-timeline-node');
             if (!node) return;
-            e.preventDefault();
             this.hideTooltip();
             if (this.hoverTimer) { clearTimeout(this.hoverTimer); this.hoverTimer = null; }
             if (this.longPressTimer) clearTimeout(this.longPressTimer);
@@ -828,7 +1166,6 @@
             if (!node) return;
             node.classList.remove('pressing');
             if (this.longPressTimer) { clearTimeout(this.longPressTimer); this.longPressTimer = null; }
-            if (!this.isLongPressed && node.dataset.id) this.scrollToMarker(node.dataset.id);
             this.longPressTarget = null;
         }
 
@@ -839,11 +1176,12 @@
             this.mutationObserver.observe(this.container, { childList: true, subtree: true });
 
             this.pollIntervalId = setInterval(() => {
-                const currentMsgCount = document.querySelectorAll(this.adapter.userMessageSelector).length;
+                const currentMsgCount = this.getTimelineItemDomCount();
                 if (currentMsgCount !== this.messageMap.size && currentMsgCount > 0) this.fullRebuild();
             }, 1500);
 
-            window.addEventListener('resize', () => this.renderWindow());
+            this.handleResize = () => this.renderWindow();
+            window.addEventListener('resize', this.handleResize);
         }
 
         loadMarks() {
@@ -868,9 +1206,19 @@
             this.clearAllTimers();
             if (this.scrollSyncRAF) cancelAnimationFrame(this.scrollSyncRAF);
             if (this.pollIntervalId) clearInterval(this.pollIntervalId);
+            if (this.handleScroll && this.scrollContainer) {
+                this.scrollContainer.removeEventListener('scroll', this.handleScroll);
+            }
+            if (this.handleScroll) {
+                document.removeEventListener('scroll', this.handleScroll, { capture: true });
+            }
+            if (this.handleResize) {
+                window.removeEventListener('resize', this.handleResize);
+            }
             this.ui.bar?.remove();
             this.ui.tooltip?.remove();
             this.ui.hitZone?.remove();
+            this.isInitialized = false;
         }
     }
 

@@ -1,6 +1,6 @@
 /**
  * Popup 题单页渲染
- * 版本：1.1.1
+ * 版本：1.1.2
  */
 
 (function () {
@@ -8,6 +8,7 @@
 
     const popupModules = window.NoteHelperPopupModules = window.NoteHelperPopupModules || {};
     const stateUtils = popupModules.state || {};
+    const problemRenderModules = popupModules.renderProblems || {};
 
     function renderListsSummary(elements, state) {
         elements.listsSummary.innerHTML = `
@@ -20,24 +21,84 @@
             <div class="summary-card">
               <div class="summary-label">题单已完成题目</div>
               <div class="summary-value">${state.listSummary.completed}</div>
-              <div class="summary-note">题单中只要触发过插件行为的题目都会计入这里</div>
+              <div class="summary-note">题单中只要触发过插件行为的题目都会计入这里。</div>
             </div>
           </div>
         `;
     }
 
-    function buildListItemTooltip(item) {
-        const fullTitle = item.translatedTitle || item.title || item.titleSlug || '未命名题目';
+    function buildListRecordId(site, problemKey) {
+        const normalizedSite = String(site || '').trim();
+        const normalizedProblemKey = String(problemKey || '').trim();
+        if (!normalizedSite || !normalizedProblemKey) return '';
+        return `${normalizedSite}:${normalizedProblemKey}`;
+    }
+
+    function buildListFallbackRecord(item, list, store) {
+        const matchedRecord = item.matchedRecord || {};
+        const site = matchedRecord.site || item.site || list.site || '';
+        const title = matchedRecord.title || item.translatedTitle || item.title || item.titleSlug || '未命名题目';
+        const titleSlug = matchedRecord.titleSlug || item.titleSlug || '';
+        const problemKey = matchedRecord.problemKey || item.problemKey || titleSlug || '';
+        const derivedIdentity = (
+            store &&
+            typeof store.createIdentityFromSiteAndProblemKey === 'function' &&
+            site &&
+            problemKey
+        )
+            ? store.createIdentityFromSiteAndProblemKey(site, problemKey)
+            : null;
+        const resolvedSite = matchedRecord.site || (derivedIdentity && derivedIdentity.site) || site;
+        const resolvedProblemKey = matchedRecord.problemKey || (derivedIdentity && derivedIdentity.problemKey) || problemKey;
+
+        return {
+            ...(derivedIdentity || {}),
+            ...matchedRecord,
+            id: matchedRecord.id || buildListRecordId(resolvedSite, resolvedProblemKey),
+            title,
+            titleSlug: matchedRecord.titleSlug || titleSlug,
+            problemKey: resolvedProblemKey || '',
+            site: resolvedSite || '',
+            canonicalId: matchedRecord.canonicalId || item.canonicalId || (derivedIdentity && derivedIdentity.canonicalId) || '',
+            url: matchedRecord.url || item.url || item.baseUrl || (derivedIdentity && derivedIdentity.url) || '',
+            baseUrl: matchedRecord.baseUrl || item.baseUrl || item.url || (derivedIdentity && derivedIdentity.baseUrl) || '',
+            updatedAt: matchedRecord.updatedAt || '',
+            lastActionType: matchedRecord.lastActionType || null
+        };
+    }
+
+    function buildListItemDeleteDataset(item, list) {
+        return {
+            listId: String(list && list.listId || '').trim(),
+            order: Number(item && item.order),
+            canonicalId: String(item && item.canonicalId || '').trim(),
+            titleSlug: String(item && item.titleSlug || '').trim(),
+            problemKey: String(item && item.problemKey || '').trim(),
+            url: String(item && (item.url || item.baseUrl) || '').trim()
+        };
+    }
+
+    function buildListItemTooltip(item, list, store) {
+        const noteTarget = buildListFallbackRecord(item, list, store);
+        if (typeof problemRenderModules.buildProblemTooltip === 'function') {
+            return problemRenderModules.buildProblemTooltip(
+                store,
+                noteTarget,
+                Boolean(noteTarget.id)
+            );
+        }
+
+        const fullTitle = noteTarget.title || '未命名题目';
         return [
             `题目：${fullTitle}`,
             `题号：${item.frontendQuestionId || '暂无'}`,
             `难度：${item.difficulty || '未知'}`,
             `进度：${item.progressLabel || '未匹配'}`,
-            `最近更新：${stateUtils.formatDateTime(item.matchedRecord && item.matchedRecord.updatedAt)}`
+            `最近更新：${stateUtils.formatDateTime(noteTarget.updatedAt)}`
         ].join('\n');
     }
 
-    function renderListItems(list, state) {
+    function renderListItems(list, state, store) {
         const keyword = stateUtils.normalizeSearchText(state.listQuery);
         const statusFilter = state.listStatusFilter || 'all';
         const filteredItems = (list.items || []).filter((item) => {
@@ -56,18 +117,21 @@
         const pageData = stateUtils.paginate(filteredItems, currentPage, state.pageSize);
         state.listPages[list.listId] = pageData.page;
 
-        const rows = pageData.items.map((item, index) => {
+        const rows = pageData.items.map((item) => {
             const badge = stateUtils.getProgressBadge(item.progressState);
-            const order = item.order || ((pageData.page - 1) * state.pageSize + index + 1);
+            const noteTarget = buildListFallbackRecord(item, list, store);
+            const deleteTarget = buildListItemDeleteDataset(item, list);
+            const openUrl = noteTarget.url || noteTarget.baseUrl || item.url || item.baseUrl || '';
+            const displayTitle = noteTarget.title || '未命名题目';
+
             return `
-              <div class="compact-line" title="${stateUtils.escapeHtml(buildListItemTooltip(item))}">
+              <div class="compact-line compact-line-list" title="${stateUtils.escapeHtml(buildListItemTooltip(item, list, store))}">
                 <button
                   type="button"
                   class="compact-open"
-                  data-open-url="${stateUtils.escapeHtml(item.url || item.baseUrl || '')}">
+                  data-open-url="${stateUtils.escapeHtml(openUrl)}">
                   <div class="compact-main">
-                    <div class="compact-index">${stateUtils.escapeHtml(String(order))}</div>
-                    <div class="compact-title">${stateUtils.escapeHtml(item.translatedTitle || item.title || item.titleSlug || '未命名题目')}</div>
+                    <div class="compact-title">${stateUtils.escapeHtml(displayTitle)}</div>
                   </div>
                 </button>
                 <div class="compact-right">
@@ -75,15 +139,29 @@
                   <button
                     type="button"
                     class="row-action-btn note"
-                    data-open-note-url="${stateUtils.escapeHtml(item.url || item.baseUrl || '')}"
-                    data-open-note-site="${stateUtils.escapeHtml(item.site || list.site || '')}"
-                    data-open-note-problem-key="${stateUtils.escapeHtml(item.problemKey || item.titleSlug || '')}"
-                    data-open-note-canonical-id="${stateUtils.escapeHtml(item.canonicalId || '')}"
-                    data-open-note-title-slug="${stateUtils.escapeHtml(item.titleSlug || '')}"
-                    data-open-note-title="${stateUtils.escapeHtml(item.translatedTitle || item.title || item.titleSlug || '未命名题目')}"
+                    data-open-note-url="${stateUtils.escapeHtml(openUrl)}"
+                    data-open-note-site="${stateUtils.escapeHtml(noteTarget.site || item.site || list.site || '')}"
+                    data-open-note-problem-key="${stateUtils.escapeHtml(noteTarget.problemKey || item.problemKey || item.titleSlug || '')}"
+                    data-open-note-canonical-id="${stateUtils.escapeHtml(noteTarget.canonicalId || item.canonicalId || '')}"
+                    data-open-note-title-slug="${stateUtils.escapeHtml(noteTarget.titleSlug || item.titleSlug || '')}"
+                    data-open-note-title="${stateUtils.escapeHtml(displayTitle)}"
                     data-open-note-source="lists"
-                    data-open-note-list-id="${stateUtils.escapeHtml(list.listId)}">
+                    data-open-note-list-id="${stateUtils.escapeHtml(list.listId)}"
+                    title="打开笔记">
                     📝
+                  </button>
+                  <button
+                    type="button"
+                    class="row-action-btn danger"
+                    data-delete-list-item="1"
+                    data-delete-list-id="${stateUtils.escapeHtml(deleteTarget.listId)}"
+                    data-delete-list-item-order="${Number.isFinite(deleteTarget.order) ? deleteTarget.order : ''}"
+                    data-delete-list-item-canonical-id="${stateUtils.escapeHtml(deleteTarget.canonicalId)}"
+                    data-delete-list-item-title-slug="${stateUtils.escapeHtml(deleteTarget.titleSlug)}"
+                    data-delete-list-item-problem-key="${stateUtils.escapeHtml(deleteTarget.problemKey)}"
+                    data-delete-list-item-url="${stateUtils.escapeHtml(deleteTarget.url)}"
+                    title="从当前题单移除">
+                    －
                   </button>
                 </div>
               </div>
@@ -104,7 +182,7 @@
         `;
     }
 
-    function renderLists(elements, state) {
+    function renderLists(elements, state, store) {
         renderListsSummary(elements, state);
 
         if (!state.lists.length) {
@@ -120,7 +198,7 @@
         const statusFilter = state.listStatusFilter || 'all';
         const hasFilter = Boolean(keyword) || statusFilter !== 'all';
         const cards = state.lists.map((list, index) => {
-            const filteredBody = renderListItems(list, state);
+            const filteredBody = renderListItems(list, state, store);
             if (hasFilter && !filteredBody) {
                 return '';
             }
@@ -151,7 +229,7 @@
         }).filter(Boolean).join('');
 
         elements.problemLists.innerHTML = cards || `
-          <div class="empty-state">${hasFilter ? '没有找到符合当前筛选条件的题单题目。提示：未匹配表示题单题目尚未在本地记录中命中。' : '没有找到符合检索条件的题单题目。'}</div>
+          <div class="empty-state">${hasFilter ? '没有找到符合当前筛选条件的题单题目。提示：未匹配表示题单题目尚未在本地记录中命中。' : '没有找到符合搜索条件的题单题目。'}</div>
         `;
     }
 

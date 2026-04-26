@@ -45,6 +45,7 @@ coverage/
 # ===== 开源发布：不公开个人开发过程文件 =====
 dev/
 tests/
+.playwright-mcp/
 docs/
 DEVLOG.md
 
@@ -77,6 +78,7 @@ trace/
 
 
 # ===== Agent/AI 协作配置 =====
+.agents/
 AGENTS.md
 AGENTS.override.md
 AGENTS*.md

@@ -1,6 +1,6 @@
 /**
  * Popup 题目页渲染
- * 版本：1.1.1
+ * 版本：1.1.2
  */
 
 (function () {
@@ -68,19 +68,29 @@
     }
 
     function buildProblemTooltip(store, record, includeReview) {
+        const safeStore = store && typeof store.getRecordStage === 'function' && typeof store.getActionLabel === 'function'
+            ? store
+            : {
+                getRecordStage() {
+                    return { code: 'none', label: '仅入库' };
+                },
+                getActionLabel() {
+                    return '暂无记录';
+                }
+            };
         const fullTitle = record.title || record.problemKey || '未命名题目';
-        const stage = store.getRecordStage(record);
+        const stage = safeStore.getRecordStage(record);
         const stageLabel = stage && stage.code === 'none' ? '仅入库' : stage.label;
         const lines = [
             `题目：${fullTitle}`,
             `站点：${record.site || '未知'}`,
             `状态：${stageLabel}`,
-            `最近动作：${store.getActionLabel(record.lastActionType)}`,
+            `最近动作：${safeStore.getActionLabel(record.lastActionType)}`,
             `最近更新：${stateUtils.formatDateTime(record.updatedAt)}`
         ];
 
-        if (includeReview && store && typeof store.getRecordReviewMeta === 'function') {
-            const reviewMeta = normalizeReviewMeta(store.getRecordReviewMeta(record));
+        if (includeReview && safeStore && typeof safeStore.getRecordReviewMeta === 'function') {
+            const reviewMeta = normalizeReviewMeta(safeStore.getRecordReviewMeta(record));
             if (reviewMeta.enabled && reviewMeta.isLeetcode) {
                 const nextReviewAt = reviewMeta.review && reviewMeta.review.nextReviewAt;
                 lines.push(`Recall probability：${formatRecallProbability(reviewMeta.recallProbability)}`);
@@ -322,6 +332,7 @@
     }
 
     popupModules.renderProblems = {
+        buildProblemTooltip,
         renderProblems: renderLeetcodeProblems,
         renderLeetcodeProblems,
         renderDeepmlProblems

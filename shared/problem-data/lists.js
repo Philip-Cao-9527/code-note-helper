@@ -1,6 +1,6 @@
 /**
  * 题单模块
- * 版本：1.1.1
+ * 版本：1.1.2
  */
 
 (function () {
@@ -45,6 +45,41 @@
             importedAt: list.importedAt,
             updatedAt: list.updatedAt
         };
+    }
+
+    function normalizeListItemIdentity(identity) {
+        const source = identity && typeof identity === 'object' ? identity : {};
+        const order = Number(source.order);
+        return {
+            order: Number.isFinite(order) ? order : null,
+            canonicalId: String(source.canonicalId || '').trim(),
+            titleSlug: String(source.titleSlug || '').trim().toLowerCase(),
+            problemKey: String(source.problemKey || '').trim(),
+            url: String(source.url || '').trim()
+        };
+    }
+
+    function doesListItemMatch(item, identity) {
+        const target = normalizeListItemIdentity(identity);
+        if (target.order !== null && Number(item && item.order) === target.order) {
+            return true;
+        }
+        if (target.canonicalId && String(item && item.canonicalId || '').trim() === target.canonicalId) {
+            return true;
+        }
+        if (target.titleSlug && String(item && item.titleSlug || '').trim().toLowerCase() === target.titleSlug) {
+            return true;
+        }
+        if (target.problemKey && String(item && item.problemKey || '').trim() === target.problemKey) {
+            return true;
+        }
+        if (target.url) {
+            const itemUrl = String(item && (item.url || item.baseUrl) || '').trim();
+            if (itemUrl === target.url) {
+                return true;
+            }
+        }
+        return false;
     }
 
     async function saveProblemList(problemList, options) {
@@ -108,6 +143,48 @@
         await syncCore.writeLocalMultiple({
             [STORAGE_KEYS.problemLists]: lists,
             [STORAGE_KEYS.syncTombstones]: tombstones
+        }, {
+            autoSync: config.autoSync,
+            markDirty: true
+        });
+
+        return true;
+    }
+
+    async function deleteProblemListItem(listId, itemIdentity, options) {
+        const config = {
+            autoSync: true,
+            ...(options || {})
+        };
+        const normalizedListId = String(listId || '').trim();
+        if (!normalizedListId) {
+            throw new Error('缺少题单标识，无法移除题目。');
+        }
+
+        const lists = await getProblemLists();
+        const targetList = lists[normalizedListId];
+        if (!targetList) return false;
+
+        const items = Array.isArray(targetList.items) ? targetList.items : [];
+        let removed = false;
+        const nextItems = items.filter((item) => {
+            if (!removed && doesListItemMatch(item, itemIdentity)) {
+                removed = true;
+                return false;
+            }
+            return true;
+        });
+
+        if (!removed) return false;
+
+        lists[normalizedListId] = {
+            ...targetList,
+            items: nextItems,
+            updatedAt: new Date().toISOString()
+        };
+
+        await syncCore.writeLocalMultiple({
+            [STORAGE_KEYS.problemLists]: lists
         }, {
             autoSync: config.autoSync,
             markDirty: true
@@ -214,6 +291,7 @@
         importProblemListFromUrl,
         importHot100StudyPlan,
         deleteProblemList,
+        deleteProblemListItem,
         buildListManifest,
         getProblemListsWithProgress,
         getProblemListSummary

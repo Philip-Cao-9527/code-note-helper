@@ -1,6 +1,6 @@
 /**
  * 题单导入器（Hot100 / 面试经典150 / 灵神白名单题单）
- * 版本：1.1.1
+ * 版本：1.1.2
  */
 
 (function () {
@@ -50,6 +50,16 @@
         'k0n2go': { id: 'K0n2gO' },
         'sjfwqi': { id: 'SJFwQI' }
     };
+    const GENERIC_DISCUSS_TITLE_KEYWORDS = new Set([
+        '讲解',
+        '题解',
+        '模板',
+        '答案',
+        '解析',
+        '视频讲解',
+        '视频题解',
+        '讲义'
+    ]);
 
     function normalizePath(pathname) {
         return String(pathname || '').replace(/\/+$/, '');
@@ -78,6 +88,10 @@
 
     function buildProblemBaseUrl(slug, origin = 'https://leetcode.cn') {
         return `${origin}/problems/${slug}/`;
+    }
+
+    function escapeRegExp(source) {
+        return String(source || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     function parseNextData(html, sourceLabel) {
@@ -131,22 +145,35 @@
         throw new Error('未找到灵神题单内容');
     }
 
-    function extractProblemSlug(rawUrl) {
-        if (!rawUrl) return '';
+    function extractProblemLinkMeta(rawUrl) {
+        if (!rawUrl) return null;
         const source = String(rawUrl).trim().replace(/&amp;/g, '&');
         try {
             const urlObject = new URL(source);
-            if (helpers.normalizeHost(urlObject.hostname) !== 'leetcode.cn') return '';
+            const host = helpers.normalizeHost(urlObject.hostname);
+            if (host !== 'leetcode.cn' && host !== 'leetcode.com') return null;
 
             const segments = String(urlObject.pathname || '').split('/').filter(Boolean);
-            if (segments.length < 2 || segments[0] !== 'problems') return '';
-            if (segments[2] === 'solutions') return '';
+            if (segments.length < 2 || segments[0] !== 'problems') return null;
 
             const slug = String(segments[1] || '').toLowerCase();
-            return /^[a-z0-9-]+$/.test(slug) ? slug : '';
+            if (!/^[a-z0-9-]+$/.test(slug)) return null;
+            return {
+                slug,
+                origin: resolveLeetCodeOrigin(host),
+                isSolution: segments[2] === 'solutions'
+            };
         } catch (error) {
+            return null;
+        }
+    }
+
+    function extractProblemSlug(rawUrl) {
+        const meta = extractProblemLinkMeta(rawUrl);
+        if (!meta || meta.isSolution) {
             return '';
         }
+        return meta.slug;
     }
 
     function normalizeDiscussTitle(rawTitle, fallbackSlug) {
@@ -161,43 +188,108 @@
         return withoutScore || fallbackSlug;
     }
 
+    function isGenericDiscussTitle(rawTitle) {
+        const normalized = String(rawTitle || '')
+            .replace(/[`*_]/g, '')
+            .replace(/[：:·•|｜\-\s]+/g, '')
+            .trim()
+            .toLowerCase();
+        return normalized ? GENERIC_DISCUSS_TITLE_KEYWORDS.has(normalized) : false;
+    }
+
     function extractFrontendQuestionId(rawTitle) {
         const matchResult = String(rawTitle || '').match(/^\s*(\d+)\./);
         return matchResult ? matchResult[1] : '';
     }
 
     function collectDiscussProblemItems(content) {
-        const titleMap = new Map();
-        const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/leetcode\.cn\/problems\/[^)\s]+)\)/gi;
+        const source = String(content || '');
+        const candidates = [];
+        const occupiedRanges = [];
+        const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/leetcode\.(?:cn|com)\/problems\/[^)\s]+)\)/gi;
         let markdownMatch;
-        while ((markdownMatch = markdownLinkRegex.exec(content))) {
-            const slug = extractProblemSlug(markdownMatch[2]);
-            if (!slug) continue;
-            if (titleMap.has(slug)) continue;
-            titleMap.set(slug, {
-                title: normalizeDiscussTitle(markdownMatch[1], slug),
-                frontendQuestionId: extractFrontendQuestionId(markdownMatch[1])
+        while ((markdownMatch = markdownLinkRegex.exec(source))) {
+            const meta = extractProblemLinkMeta(markdownMatch[2]);
+            if (!meta) continue;
+            occupiedRanges.push([markdownMatch.index, markdownMatch.index + markdownMatch[0].length]);
+            candidates.push({
+                slug: meta.slug,
+                origin: meta.origin,
+                isSolution: meta.isSolution,
+                url: markdownMatch[2],
+                title: normalizeDiscussTitle(markdownMatch[1], ''),
+                frontendQuestionId: extractFrontendQuestionId(markdownMatch[1]),
+                index: markdownMatch.index
             });
         }
 
-        const urlRegex = /https?:\/\/leetcode\.cn\/problems\/[^\s)"'<>]+/gi;
-        const seenSlugs = new Set();
-        const items = [];
+        const urlRegex = /https?:\/\/leetcode\.(?:cn|com)\/problems\/[^\s)"'<>]+/gi;
         let urlMatch;
-        while ((urlMatch = urlRegex.exec(content))) {
-            const slug = extractProblemSlug(urlMatch[0]);
-            if (!slug || seenSlugs.has(slug)) continue;
-            seenSlugs.add(slug);
-
-            const titleInfo = titleMap.get(slug) || {};
-            items.push({
-                slug,
-                title: titleInfo.title || slug,
-                frontendQuestionId: titleInfo.frontendQuestionId || ''
+        while ((urlMatch = urlRegex.exec(source))) {
+            const overlap = occupiedRanges.some(([start, end]) => urlMatch.index >= start && urlMatch.index < end);
+            if (overlap) continue;
+            const meta = extractProblemLinkMeta(urlMatch[0]);
+            if (!meta) continue;
+            candidates.push({
+                slug: meta.slug,
+                origin: meta.origin,
+                isSolution: meta.isSolution,
+                url: urlMatch[0],
+                title: '',
+                frontendQuestionId: '',
+                index: urlMatch.index
             });
         }
 
-        return items;
+        const entries = new Map();
+        candidates
+            .sort((left, right) => left.index - right.index)
+            .forEach((candidate) => {
+                const existing = entries.get(candidate.slug) || {
+                    slug: candidate.slug,
+                    origin: candidate.origin,
+                    problemUrl: buildProblemBaseUrl(candidate.slug, candidate.origin),
+                    firstIndex: candidate.index,
+                    titles: [],
+                    frontendQuestionIds: []
+                };
+
+                if (!candidate.isSolution) {
+                    existing.problemUrl = buildProblemBaseUrl(candidate.slug, candidate.origin);
+                }
+                if (candidate.title && !isGenericDiscussTitle(candidate.title)) {
+                    existing.titles.push({
+                        title: candidate.title,
+                        priority: candidate.isSolution ? 1 : 2
+                    });
+                }
+                if (candidate.frontendQuestionId) {
+                    existing.frontendQuestionIds.push(candidate.frontendQuestionId);
+                }
+
+                entries.set(candidate.slug, existing);
+            });
+
+        return Array.from(entries.values()).map((entry) => {
+            const sortedTitles = entry.titles.sort((left, right) => right.priority - left.priority);
+            let resolvedTitle = sortedTitles[0] ? sortedTitles[0].title : '';
+            if (!resolvedTitle) {
+                const context = source.slice(Math.max(0, entry.firstIndex - 120), Math.min(source.length, entry.firstIndex + 220));
+                const titlePattern = new RegExp(`(?:\\[)?(\\d+\\.\\s*[^\\]\\n\\r]{1,80})(?:\\])?(?=[^\\n\\r]{0,120}https?:\\/\\/leetcode\\.(?:cn|com)\\/problems\\/${escapeRegExp(entry.slug)}(?:\\/|\\b))`, 'i');
+                const titleMatch = context.match(titlePattern);
+                resolvedTitle = titleMatch ? normalizeDiscussTitle(titleMatch[1], '') : '';
+            }
+            if (!resolvedTitle || isGenericDiscussTitle(resolvedTitle)) {
+                resolvedTitle = entry.slug;
+            }
+
+            return {
+                slug: entry.slug,
+                title: normalizeDiscussTitle(resolvedTitle, entry.slug),
+                frontendQuestionId: entry.frontendQuestionIds[0] || '',
+                url: entry.problemUrl
+            };
+        });
     }
 
     function parseImportTarget(url) {
@@ -247,7 +339,7 @@
                 const postId = String(discussPostMatch[1] || '').trim();
                 if (!postId) return null;
                 return {
-                    type: 'lingshen_post',
+                    type: 'leetcode_post',
                     postId,
                     sourceUrl: buildNormalizedUrl(urlObject, pathname)
                 };
@@ -340,14 +432,14 @@
         };
     }
 
-    async function importLingshenDiscuss(target) {
-        const html = await fetchSourceHtml(target.sourceUrl, '灵神题单');
-        const nextData = parseNextData(html, '灵神题单');
+    async function importLeetcodeDiscuss(target) {
+        const html = await fetchSourceHtml(target.sourceUrl, 'LeetCode 讨论题单');
+        const nextData = parseNextData(html, 'LeetCode 讨论题单');
         const qaQuestion = resolveDiscussQuestion(nextData);
-        const qaDiscussId = resolveWhitelistedDiscussId(qaQuestion?.uuid);
-        const targetDiscussId = resolveWhitelistedDiscussId(target.discussId);
-        const resolvedDiscussId = qaDiscussId || targetDiscussId;
-        if (!resolvedDiscussId) {
+        const resolvedDiscussId = resolveWhitelistedDiscussId(qaQuestion?.uuid || target.discussId);
+        const isWhitelistedDiscuss = Boolean(resolvedDiscussId);
+
+        if (target.type === 'lingshen' && !resolvedDiscussId) {
             const error = new Error('该讨论帖暂不在支持范围内。当前支持灵神白名单题单、Hot100 和面试经典 150。');
             error.code = 'unsupported_list_source';
             throw error;
@@ -355,16 +447,15 @@
 
         const content = String(qaQuestion?.content || '');
         if (!content) {
-            throw new Error('灵神题单内容为空，暂时无法导入');
+            throw new Error('讨论帖内容为空，暂时无法导入');
         }
 
         const parsedItems = collectDiscussProblemItems(content);
         if (!parsedItems.length) {
-            throw new Error('灵神题单未解析到可导入的题目链接');
+            throw new Error('讨论帖未解析到可导入的题目链接');
         }
 
         const now = new Date().toISOString();
-        const normalizedDiscussId = String(resolvedDiscussId || '').toLowerCase();
         const items = parsedItems.map((item, index) => {
             return {
                 canonicalId: `leet:${item.slug}`,
@@ -373,23 +464,39 @@
                 title: item.title,
                 translatedTitle: item.title,
                 difficulty: 'UNKNOWN',
-                url: buildProblemBaseUrl(item.slug),
-                baseUrl: buildProblemBaseUrl(item.slug),
+                url: item.url,
+                baseUrl: item.url,
                 order: index + 1,
                 sourceContext: {
-                    source: 'lingshen_discuss',
-                    discussId: resolvedDiscussId
+                    source: isWhitelistedDiscuss ? 'lingshen_discuss' : 'leetcode_discuss_post',
+                    discussId: resolvedDiscussId || '',
+                    postId: String(target.postId || '').trim()
                 },
                 sourceSection: null,
                 topics: []
             };
         });
 
+        if (isWhitelistedDiscuss) {
+            const normalizedDiscussId = String(resolvedDiscussId || '').toLowerCase();
+            return {
+                listId: `lc-cn:discuss:${normalizedDiscussId}`,
+                sourceType: 'leetcode_discuss',
+                sourceUrl: `https://leetcode.cn/circle/discuss/${resolvedDiscussId}/`,
+                title: String(qaQuestion?.title || '').trim() || `灵神题单 ${resolvedDiscussId}`,
+                site: 'leetcode.cn',
+                importedAt: now,
+                updatedAt: now,
+                items
+            };
+        }
+
+        const normalizedPostId = String(target.postId || '').trim();
         return {
-            listId: `lc-cn:discuss:${normalizedDiscussId}`,
-            sourceType: 'leetcode_discuss',
-            sourceUrl: `https://leetcode.cn/circle/discuss/${resolvedDiscussId}/`,
-            title: String(qaQuestion?.title || '').trim() || `灵神题单 ${resolvedDiscussId}`,
+            listId: `lc-cn:post:${normalizedPostId}`,
+            sourceType: 'leetcode_discuss_post',
+            sourceUrl: target.sourceUrl,
+            title: String(qaQuestion?.title || '').trim() || `LeetCode 讨论题单 ${normalizedPostId}`,
             site: 'leetcode.cn',
             importedAt: now,
             updatedAt: now,
@@ -410,8 +517,8 @@
         if (target.type === 'studyplan') {
             return importStudyPlan(target);
         }
-        if (target.type === 'lingshen' || target.type === 'lingshen_post') {
-            return importLingshenDiscuss(target);
+        if (target.type === 'lingshen' || target.type === 'leetcode_post') {
+            return importLeetcodeDiscuss(target);
         }
 
         throw new Error('该 URL 暂时不支持导入。当前支持 Hot100、面试经典 150、灵神白名单题单（支持 circle/discuss 与 discuss/post 链接）。');
