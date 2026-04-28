@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Popup 入口脚本
  * 版本：1.1.2
  */
@@ -10,7 +10,64 @@
     const SYNC_INDICATOR_CRUISE_INTERVAL_MS = 2000;
     const SYNC_INDICATOR_CRUISE_DURATION_MS = 1200;
 
+    let themeToggleController = null;
+    let removeThemeListener = null;
+
+    async function initThemeSystem() {
+        if (!window.ThemeCenter) {
+            console.warn('[Popup] ThemeCenter 未加载');
+            return;
+        }
+
+        const initResult = await window.ThemeCenter.init();
+        if (!initResult.success) {
+            console.error('[Popup] 主题系统初始化失败:', initResult.error);
+            return;
+        }
+
+        const themeContainer = document.getElementById('theme-toggle-container');
+        if (themeContainer) {
+            themeToggleController = window.ThemeToggleButton.create({
+                container: themeContainer,
+                position: 'top-right',
+                showDropdown: true,
+                onThemeChange: (data) => {
+                    console.log('[Popup] 主题已切换:', data.themeId);
+                },
+                onError: (error) => {
+                    console.error('[Popup] 主题切换失败:', error);
+                    showThemeError(error.message || '主题切换失败，请重试');
+                }
+            });
+
+            await themeToggleController.render();
+        }
+
+        removeThemeListener = window.ThemeCenter.addChangeListener((event) => {
+            if (event.type === 'themeChanged' && themeToggleController) {
+                themeToggleController.render();
+            }
+        });
+    }
+
+    function showThemeError(message) {
+        const toast = document.getElementById('popup-toast');
+        if (toast) {
+            toast.textContent = message || '主题切换失败，请重试';
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            await initThemeSystem();
+        } catch (themeError) {
+            console.error('[Popup] 主题系统初始化出错:', themeError);
+        }
+
         const popupModules = window.NoteHelperPopupModules || {};
         const stateUtils = popupModules.state;
         const renderOverview = popupModules.renderOverview;
@@ -379,10 +436,26 @@
             window.addEventListener('unload', () => {
                 clearSyncIndicatorTimer();
                 clearSyncIndicatorCruiseTimer();
+
                 if (typeof removeSyncListener === 'function') {
                     removeSyncListener();
                     removeSyncListener = null;
                 }
+
+                if (typeof removeThemeListener === 'function') {
+                    removeThemeListener();
+                    removeThemeListener = null;
+                }
+
+                if (themeToggleController && typeof themeToggleController.remove === 'function') {
+                    themeToggleController.remove();
+                    themeToggleController = null;
+                }
+
+                if (window.ThemeCenter && typeof window.ThemeCenter.destroy === 'function') {
+                    window.ThemeCenter.destroy();
+                }
+
                 if (schedulerStarted && typeof store.stopAutoSyncScheduler === 'function') {
                     store.stopAutoSyncScheduler();
                     schedulerStarted = false;
