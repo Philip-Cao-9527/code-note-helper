@@ -52,6 +52,7 @@
     let previewTimer = null;
     let saveToastTimer = null;
     let hasBeforeUnloadGuardBound = false;
+    let themeRemoveListener = null;
 
     function getDefaultViewState() {
         return {
@@ -1105,6 +1106,25 @@
         state.initialTitleSlug = String(params.get('titleSlug') || '').trim();
     }
 
+    async function initThemeSystem() {
+        if (!window.ThemeCenter) {
+            console.warn('[Notes] ThemeCenter 未加载');
+            return;
+        }
+
+        const initResult = await window.ThemeCenter.init();
+        if (!initResult.success) {
+            console.error('[Notes] 主题系统初始化失败:', initResult.error);
+            return;
+        }
+
+        themeRemoveListener = window.ThemeCenter.addChangeListener((event) => {
+            if (event.type === 'themeChanged') {
+                console.log('[Notes] 主题已变化:', event.theme?.name);
+            }
+        });
+    }
+
     async function bootstrap() {
         state.store = window.NoteHelperProblemData;
         if (!state.store ||
@@ -1113,6 +1133,8 @@
             setStatus('笔记数据仓库未加载，无法继续', true);
             return;
         }
+
+        await initThemeSystem();
 
         readQuery();
         resetViewState();
@@ -1148,4 +1170,10 @@
             });
         });
     }
+
+    window.addEventListener('beforeunload', () => {
+        if (themeRemoveListener) {
+            themeRemoveListener();
+        }
+    });
 })();

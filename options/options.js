@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 高级设置页脚本
  * 版本：1.1.1
  */
@@ -7,6 +7,462 @@
     'use strict';
 
     const DEFAULT_WEBDAV_REMOTE_PATH = 'CodeNote-Helper/backups/full-backup.json';
+
+    let themeRemoveListener = null;
+    let currentCustomColors = {};
+
+    const COLOR_EDITOR_FIELDS = [
+        { key: 'bg', label: '背景色', type: 'color' },
+        { key: 'bgSoft', label: '柔和背景色', type: 'color' },
+        { key: 'bgCard', label: '卡片背景色', type: 'color' },
+        { key: 'bgPanel', label: '面板背景色', type: 'color' },
+        { key: 'bgSoftHover', label: '悬停背景色', type: 'color' },
+        { key: 'border', label: '边框色', type: 'color' },
+        { key: 'borderSoft', label: '柔和边框色', type: 'color' },
+        { key: 'textMain', label: '主文字色', type: 'color' },
+        { key: 'textStrong', label: '强调文字色', type: 'color' },
+        { key: 'textMuted', label: '次要文字色', type: 'color' },
+        { key: 'accent', label: '强调色', type: 'color' },
+        { key: 'accentSoft', label: '柔和强调色', type: 'color' },
+        { key: 'success', label: '成功色', type: 'color' },
+        { key: 'successSoft', label: '柔和成功色', type: 'color' },
+        { key: 'warning', label: '警告色', type: 'color' },
+        { key: 'warningSoft', label: '柔和警告色', type: 'color' },
+        { key: 'danger', label: '危险色', type: 'color' },
+        { key: 'dangerSoft', label: '柔和危险色', type: 'color' }
+    ];
+
+    async function initThemeSystem(showToast) {
+        if (!window.ThemeCenter) {
+            console.warn('[Options] ThemeCenter 未加载');
+            return;
+        }
+
+        const initResult = await window.ThemeCenter.init();
+        if (!initResult.success) {
+            console.error('[Options] 主题系统初始化失败:', initResult.error);
+            return;
+        }
+
+        themeRemoveListener = window.ThemeCenter.addChangeListener(async (event) => {
+            if (event.type === 'themeChanged') {
+                await refreshThemeUI();
+            }
+        });
+
+        await refreshThemeUI();
+        bindThemeEvents(showToast);
+    }
+
+    async function refreshThemeUI() {
+        if (!window.ThemeCenter) return;
+
+        const config = await window.ThemeCenter.getConfig();
+        const currentTheme = await window.ThemeCenter.getCurrentTheme();
+        const presets = window.ThemeCenter.getPresetThemes();
+        const customThemes = await window.ThemeCenter.getCustomThemes();
+
+        const currentThemeNameEl = document.getElementById('current-theme-name');
+        const currentThemeTypeEl = document.getElementById('current-theme-type');
+        const animationStatusEl = document.getElementById('animation-status');
+        const animationToggle = document.getElementById('animation-toggle');
+        const transitionDuration = document.getElementById('transition-duration');
+        const transitionDurationValue = document.getElementById('transition-duration-value');
+
+        if (currentThemeNameEl) {
+            currentThemeNameEl.textContent = currentTheme?.name || '未知';
+        }
+        if (currentThemeTypeEl) {
+            currentThemeTypeEl.textContent = currentTheme?.type === 'custom' ? '自定义主题' : '预设主题';
+        }
+        if (animationStatusEl) {
+            animationStatusEl.textContent = config.animationEnabled ? '已启用' : '已禁用';
+        }
+        if (animationToggle) {
+            animationToggle.checked = config.animationEnabled;
+        }
+        if (transitionDuration) {
+            transitionDuration.value = config.transitionDuration || 0.3;
+        }
+        if (transitionDurationValue) {
+            transitionDurationValue.textContent = (config.transitionDuration || 0.3) + 's';
+        }
+
+        renderThemePresets(presets, config.currentTheme);
+        renderCustomThemes(customThemes, config.currentTheme);
+        initCustomColorEditor(currentTheme);
+    }
+
+    function renderThemePresets(presets, currentThemeId) {
+        const container = document.getElementById('theme-presets-grid');
+        if (!container) return;
+
+        container.innerHTML = presets.map(theme => `
+            <button class="theme-preset-btn ${theme.id === currentThemeId ? 'active' : ''}" 
+                    data-theme-id="${theme.id}" 
+                    type="button">
+                <div class="theme-preset-preview" style="background: ${theme.gradients.primary}"></div>
+                <div class="theme-preset-name">${theme.name}</div>
+            </button>
+        `).join('');
+    }
+
+    function renderCustomThemes(customThemes, currentThemeId) {
+        const container = document.getElementById('custom-themes-list');
+        if (!container) return;
+
+        const themeList = Object.values(customThemes);
+
+        if (themeList.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="text-align: center; padding: 20px; color: #64748b;">
+                    暂无自定义主题
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = themeList.map(theme => `
+            <div class="custom-theme-item ${theme.id === currentThemeId ? 'active' : ''}" data-theme-id="${theme.id}">
+                <div class="custom-theme-preview" style="background: ${theme.gradients?.primary || '#6366f1'}"></div>
+                <div class="custom-theme-info">
+                    <div class="custom-theme-name">${theme.name}</div>
+                    <div class="custom-theme-meta">
+                        基于 ${window.PRESET_THEMES?.[theme.baseTheme]?.name || theme.baseTheme || '暗黑'} 预设
+                    </div>
+                </div>
+                <div class="custom-theme-actions">
+                    <button class="btn btn-secondary" data-action="apply" data-theme-id="${theme.id}" type="button" style="padding: 6px 10px; font-size: 12px;">应用</button>
+                    <button class="btn btn-secondary" data-action="delete" data-theme-id="${theme.id}" type="button" style="padding: 6px 10px; font-size: 12px; color: #dc2626;">删除</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function initCustomColorEditor(baseTheme) {
+        const container = document.getElementById('custom-colors-grid');
+        const baseThemeSelect = document.getElementById('custom-base-theme');
+
+        if (!container) return;
+
+        let targetTheme = baseTheme;
+        if (baseThemeSelect && window.PRESET_THEMES) {
+            const selectedBase = baseThemeSelect.value;
+            if (window.PRESET_THEMES[selectedBase]) {
+                targetTheme = window.PRESET_THEMES[selectedBase];
+            }
+        }
+
+        currentCustomColors = { ...targetTheme.colors };
+
+        container.innerHTML = COLOR_EDITOR_FIELDS.map(field => {
+            const value = currentCustomColors[field.key] || '#000000';
+            return `
+                <div class="form-group">
+                    <label for="color-${field.key}">${field.label}</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="color" id="color-${field.key}" data-color-key="${field.key}" 
+                               value="${rgbToHex(value)}" style="width: 40px; height: 36px; padding: 2px; cursor: pointer;">
+                        <input type="text" id="color-text-${field.key}" data-color-key="${field.key}" 
+                               value="${value}" style="flex: 1; font-family: monospace; font-size: 12px;">
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        bindColorEditorEvents();
+    }
+
+    function rgbToHex(color) {
+        if (color.startsWith('#')) {
+            const hex = color.length === 9 ? color.slice(0, 7) : color;
+            return hex;
+        }
+
+        if (color.startsWith('rgba') || color.startsWith('rgb')) {
+            const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+            if (match) {
+                const r = parseInt(match[1]);
+                const g = parseInt(match[2]);
+                const b = parseInt(match[3]);
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            }
+        }
+
+        return '#000000';
+    }
+
+    function bindColorEditorEvents() {
+        COLOR_EDITOR_FIELDS.forEach(field => {
+            const colorInput = document.getElementById(`color-${field.key}`);
+            const textInput = document.getElementById(`color-text-${field.key}`);
+
+            if (colorInput) {
+                colorInput.addEventListener('input', (e) => {
+                    const hex = e.target.value;
+                    currentCustomColors[field.key] = hex;
+                    if (textInput) {
+                        textInput.value = hex;
+                    }
+                });
+            }
+
+            if (textInput) {
+                textInput.addEventListener('input', (e) => {
+                    const value = e.target.value.trim();
+                    if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+                        currentCustomColors[field.key] = value;
+                        if (colorInput) {
+                            colorInput.value = value;
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function bindThemeEvents(showToast) {
+        const presetsContainer = document.getElementById('theme-presets-grid');
+        if (presetsContainer) {
+            presetsContainer.addEventListener('click', async (e) => {
+                const btn = e.target.closest('.theme-preset-btn');
+                if (!btn) return;
+
+                const themeId = btn.dataset.themeId;
+                if (!themeId) return;
+
+                try {
+                    const result = await window.ThemeCenter.applyTheme(themeId);
+                    if (result.success) {
+                        showToast(`已切换到「${result.theme.name}」主题`);
+                    } else {
+                        showToast('主题切换失败，请重试');
+                    }
+                } catch (error) {
+                    console.error('[Options] 切换主题失败:', error);
+                    showToast('主题切换失败，请重试');
+                }
+            });
+        }
+
+        const customThemesContainer = document.getElementById('custom-themes-list');
+        if (customThemesContainer) {
+            customThemesContainer.addEventListener('click', async (e) => {
+                const applyBtn = e.target.closest('[data-action="apply"]');
+                const deleteBtn = e.target.closest('[data-action="delete"]');
+
+                if (applyBtn) {
+                    const themeId = applyBtn.dataset.themeId;
+                    try {
+                        const result = await window.ThemeCenter.applyTheme(themeId);
+                        if (result.success) {
+                            showToast(`已切换到自定义主题「${result.theme.name}」`);
+                        } else {
+                            showToast('主题切换失败，请重试');
+                        }
+                    } catch (error) {
+                        console.error('[Options] 应用自定义主题失败:', error);
+                        showToast('主题切换失败，请重试');
+                    }
+                }
+
+                if (deleteBtn) {
+                    const themeId = deleteBtn.dataset.themeId;
+                    if (confirm('确定要删除这个自定义主题吗？')) {
+                        try {
+                            await window.ThemeCenter.deleteCustomTheme(themeId);
+                            showToast('自定义主题已删除');
+                            await refreshThemeUI();
+                        } catch (error) {
+                            console.error('[Options] 删除自定义主题失败:', error);
+                            showToast('删除失败，请重试');
+                        }
+                    }
+                }
+            });
+        }
+
+        const animationToggle = document.getElementById('animation-toggle');
+        if (animationToggle) {
+            animationToggle.addEventListener('change', async () => {
+                try {
+                    const config = await window.ThemeCenter.getConfig();
+                    config.animationEnabled = animationToggle.checked;
+                    await window.ThemeCenter.setConfig(config);
+                    showToast(animationToggle.checked ? '过渡动画已启用' : '过渡动画已禁用');
+                    await refreshThemeUI();
+                } catch (error) {
+                    console.error('[Options] 保存动画设置失败:', error);
+                    showToast('保存失败，请重试');
+                }
+            });
+        }
+
+        const transitionDuration = document.getElementById('transition-duration');
+        const transitionDurationValue = document.getElementById('transition-duration-value');
+        if (transitionDuration && transitionDurationValue) {
+            transitionDuration.addEventListener('input', () => {
+                transitionDurationValue.textContent = transitionDuration.value + 's';
+            });
+
+            transitionDuration.addEventListener('change', async () => {
+                try {
+                    const config = await window.ThemeCenter.getConfig();
+                    config.transitionDuration = parseFloat(transitionDuration.value);
+                    await window.ThemeCenter.setConfig(config);
+                    showToast('过渡时长已更新');
+                } catch (error) {
+                    console.error('[Options] 保存过渡时长失败:', error);
+                    showToast('保存失败，请重试');
+                }
+            });
+        }
+
+        const baseThemeSelect = document.getElementById('custom-base-theme');
+        if (baseThemeSelect && window.PRESET_THEMES) {
+            baseThemeSelect.addEventListener('change', () => {
+                const selectedBase = baseThemeSelect.value;
+                if (window.PRESET_THEMES[selectedBase]) {
+                    initCustomColorEditor(window.PRESET_THEMES[selectedBase]);
+                }
+            });
+        }
+
+        const btnPreviewCustomTheme = document.getElementById('btn-preview-custom-theme');
+        if (btnPreviewCustomTheme) {
+            btnPreviewCustomTheme.addEventListener('click', async () => {
+                const themeName = document.getElementById('custom-theme-name')?.value?.trim();
+                const baseTheme = document.getElementById('custom-base-theme')?.value || 'dark';
+
+                if (!window.PRESET_THEMES || !window.PRESET_THEMES[baseTheme]) {
+                    showToast('请选择有效的基础主题');
+                    return;
+                }
+
+                const tempTheme = {
+                    id: 'temp_preview_' + Date.now(),
+                    name: themeName || '预览主题',
+                    baseTheme: baseTheme,
+                    type: 'custom',
+                    colors: currentCustomColors,
+                    gradients: window.PRESET_THEMES[baseTheme].gradients
+                };
+
+                const mergedTheme = {
+                    ...window.PRESET_THEMES[baseTheme],
+                    ...tempTheme,
+                    colors: { ...window.PRESET_THEMES[baseTheme].colors, ...currentCustomColors }
+                };
+
+                const config = await window.ThemeCenter.getConfig();
+                window.ThemeRenderer.applyTheme(mergedTheme, config);
+                showToast('正在预览自定义主题效果');
+            });
+        }
+
+        const btnSaveCustomTheme = document.getElementById('btn-save-custom-theme');
+        if (btnSaveCustomTheme) {
+            btnSaveCustomTheme.addEventListener('click', async () => {
+                const themeName = document.getElementById('custom-theme-name')?.value?.trim();
+                const baseTheme = document.getElementById('custom-base-theme')?.value || 'dark';
+
+                if (!themeName) {
+                    showToast('请输入自定义主题名称');
+                    return;
+                }
+
+                if (!window.PRESET_THEMES || !window.PRESET_THEMES[baseTheme]) {
+                    showToast('请选择有效的基础主题');
+                    return;
+                }
+
+                try {
+                    const customTheme = {
+                        id: 'custom_' + Date.now(),
+                        name: themeName,
+                        baseTheme: baseTheme,
+                        type: 'custom',
+                        colors: currentCustomColors,
+                        gradients: window.PRESET_THEMES[baseTheme].gradients,
+                        fonts: window.PRESET_THEMES[baseTheme].fonts,
+                        transitions: window.PRESET_THEMES[baseTheme].transitions
+                    };
+
+                    const result = await window.ThemeCenter.saveCustomTheme(customTheme);
+                    if (result.success) {
+                        showToast(`自定义主题「${themeName}」已保存`);
+                        await refreshThemeUI();
+                    } else {
+                        showToast('保存失败，请重试');
+                    }
+                } catch (error) {
+                    console.error('[Options] 保存自定义主题失败:', error);
+                    showToast('保存失败，请重试');
+                }
+            });
+        }
+
+        const btnResetCustomTheme = document.getElementById('btn-reset-custom-theme');
+        if (btnResetCustomTheme) {
+            btnResetCustomTheme.addEventListener('click', () => {
+                const baseTheme = document.getElementById('custom-base-theme')?.value || 'dark';
+                if (window.PRESET_THEMES && window.PRESET_THEMES[baseTheme]) {
+                    initCustomColorEditor(window.PRESET_THEMES[baseTheme]);
+                    showToast('已重置为预设主题颜色');
+                }
+            });
+        }
+
+        const btnExportTheme = document.getElementById('btn-export-theme');
+        if (btnExportTheme) {
+            btnExportTheme.addEventListener('click', async () => {
+                try {
+                    const configJson = await window.ThemeCenter.exportThemeConfig();
+                    const blob = new Blob([configJson], { type: 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = `code-note-helper-theme-${Date.now()}.json`;
+                    anchor.click();
+                    URL.revokeObjectURL(url);
+                    showToast('主题配置已导出');
+                } catch (error) {
+                    console.error('[Options] 导出主题配置失败:', error);
+                    showToast('导出失败，请重试');
+                }
+            });
+        }
+
+        const btnImportTheme = document.getElementById('btn-import-theme');
+        const importThemeFile = document.getElementById('import-theme-file');
+        if (btnImportTheme && importThemeFile) {
+            btnImportTheme.addEventListener('click', () => {
+                importThemeFile.click();
+            });
+
+            importThemeFile.addEventListener('change', async () => {
+                const file = importThemeFile.files && importThemeFile.files[0];
+                if (!file) return;
+
+                try {
+                    const text = await file.text();
+                    const result = await window.ThemeCenter.importThemeConfig(text);
+
+                    if (result.success) {
+                        showToast('主题配置已导入');
+                        await refreshThemeUI();
+                    } else {
+                        showToast(result.error || '导入失败，请检查文件格式');
+                    }
+                } catch (error) {
+                    console.error('[Options] 导入主题配置失败:', error);
+                    showToast('导入失败，请检查文件内容');
+                } finally {
+                    importThemeFile.value = '';
+                }
+            });
+        }
+    }
 
     function resolveWebdavPanelVisible(webdavEnabled) {
         return Boolean(webdavEnabled);
@@ -446,9 +902,16 @@
 
         try {
             await refreshView();
+            await initThemeSystem(showToast);
         } catch (error) {
             console.error('[Options] 初始化失败：', error);
             showToast('设置页初始化失败，请刷新页面', 2600);
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if (themeRemoveListener) {
+            themeRemoveListener();
         }
     });
 })();

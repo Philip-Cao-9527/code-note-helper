@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CodeNote Helper</title>
   <link rel="stylesheet" href="popup.css">
+  <script src="../shared/theme-center.js"></script>
 </head>
 
 <body>
@@ -16,7 +17,10 @@
           <div class="brand-title">CodeNote Helper</div>
           <div class="brand-subtitle">展示题目与题单进度，下方 <span class="brand-subtitle-key">设置与备份</span> 管理备份与API</div>
         </div>
-        <div class="version-pill" id="version-text">v1.1.2</div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+          <div class="version-pill" id="version-text">v1.1.2</div>
+          <div id="theme-toggle-container"></div>
+        </div>
       </div>
     </header>
 
