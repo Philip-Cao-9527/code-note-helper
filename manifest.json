@@ -1,4 +1,4 @@
-﻿{
+{
   "manifest_version": 3,
   "name": "CodeNote Helper",
   "version": "1.1.2",
@@ -46,6 +46,7 @@
         "https://leetcode.cn/problems/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/problem-data/constants.js",
         "shared/problem-data/helpers.js",
@@ -85,6 +86,7 @@
         "https://leetcode.com/problems/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/problem-data/constants.js",
         "shared/problem-data/helpers.js",
@@ -124,6 +126,7 @@
         "https://codefun2000.com/p/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/problem-data/constants.js",
         "shared/problem-data/helpers.js",
@@ -163,6 +166,7 @@
         "https://chatgpt.com/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/messaging.js",
         "content/timeline/sites/chatgpt/timeline.js"
@@ -177,6 +181,7 @@
         "https://gemini.google.com/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/messaging.js",
         "content/timeline/sites/gemini/timeline.js"
@@ -191,6 +196,7 @@
         "https://gpt.aimonkey.plus/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/messaging.js",
         "content/timeline/sites/gpt-aimonkey/timeline.js"
@@ -205,6 +211,7 @@
         "https://c.aimonkey.plus/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/messaging.js",
         "content/timeline/sites/claude-aimonkey/timeline.js"
@@ -219,6 +226,7 @@
         "https://claude.ai/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/messaging.js",
         "content/timeline/sites/claude/timeline.js"
@@ -236,6 +244,7 @@
         "https://www.deep-ml.com/problems/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/problem-data/constants.js",
         "shared/problem-data/helpers.js",
@@ -281,6 +290,7 @@
         "https://duoan-torchcode.hf.space/*"
       ],
       "js": [
+        "shared/theme-center.js",
         "shared/storage.js",
         "shared/problem-data/constants.js",
         "shared/problem-data/helpers.js",

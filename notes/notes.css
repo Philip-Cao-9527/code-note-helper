@@ -1,25 +1,7 @@
-﻿/**
+/**
  * 笔记网页样式
- * 版本：1.0.81
+ * 版本：1.0.82
  */
-
-:root {
-  --bg: #f6f2ea;
-  --bg-soft: #f8f5ee;
-  --panel: rgba(255, 255, 255, 0.9);
-  --panel-strong: #ffffff;
-  --border: rgba(145, 134, 116, 0.22);
-  --border-soft: rgba(145, 134, 116, 0.14);
-  --text-main: #2c271f;
-  --text-subtle: #6a6255;
-  --text-muted: #8a8173;
-  --accent: #8e6a3f;
-  --accent-soft: rgba(142, 106, 63, 0.12);
-  --danger: #d6544a;
-  --success: #2f8a57;
-  --shadow-soft: 0 12px 34px rgba(74, 58, 36, 0.08);
-  --shadow-card: 0 8px 22px rgba(74, 58, 36, 0.06);
-}
 
 * {
   box-sizing: border-box;
@@ -33,13 +15,15 @@ body {
 }
 
 body {
-  color: var(--text-main);
-  font-family: "IBM Plex Sans", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text-main, #2c271f);
+  font-family: var(--font-base, "IBM Plex Sans", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif);
   background:
     radial-gradient(circle at 18% 2%, rgba(211, 189, 156, 0.4), transparent 40%),
     radial-gradient(circle at 90% 100%, rgba(198, 179, 149, 0.28), transparent 38%),
-    linear-gradient(160deg, var(--bg) 0%, var(--bg-soft) 100%);
+    var(--gradient-background, linear-gradient(160deg, #f6f2ea 0%, #f8f5ee 100%));
   letter-spacing: 0.01em;
+  transition: background-color var(--transition-fast, 0.15s) ease,
+              color var(--transition-fast, 0.15s) ease;
 }
 
 button,
@@ -68,8 +52,8 @@ select {
 .notebook-pane {
   width: 330px;
   max-width: 44vw;
-  border-right: 1px solid var(--border-soft);
-  background: linear-gradient(180deg, rgba(248, 244, 236, 0.82), rgba(245, 239, 229, 0.78));
+  border-right: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
+  background: var(--bg-soft, linear-gradient(180deg, rgba(248, 244, 236, 0.82), rgba(245, 239, 229, 0.78)));
   backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
@@ -77,19 +61,19 @@ select {
 
 .notebook-header {
   padding: 18px 16px 12px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
 }
 
 .notebook-title {
   font-size: 18px;
   font-weight: 630;
-  color: #2d2518;
+  color: var(--text-strong, #2d2518);
 }
 
 .notebook-meta {
   margin-top: 7px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8a8173);
 }
 
 .notebook-filters {
@@ -103,15 +87,17 @@ select {
 .notebook-select {
   min-height: 37px;
   padding: 7px 11px;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--text-main);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  background: var(--bg, rgba(255, 255, 255, 0.7));
+  color: var(--text-main, #2c271f);
+  transition: border-color var(--transition-fast, 0.2s) ease,
+              box-shadow var(--transition-fast, 0.2s) ease,
+              background var(--transition-fast, 0.2s) ease;
 }
 
 .notebook-search::placeholder {
-  color: #9e9588;
+  color: var(--text-muted, #9e9588);
 }
 
 .notebook-filter-row {
@@ -123,9 +109,9 @@ select {
 .notebook-search:focus,
 .notebook-select:focus {
   outline: none;
-  border-color: rgba(142, 106, 63, 0.5);
-  box-shadow: 0 0 0 3px rgba(142, 106, 63, 0.13);
-  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--accent-soft, rgba(142, 106, 63, 0.5));
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(142, 106, 63, 0.13));
+  background: var(--bg-card, rgba(255, 255, 255, 0.95));
 }
 
 .notebook-list {
@@ -140,36 +126,38 @@ select {
 .notebook-empty {
   margin-top: 8px;
   padding: 14px 12px;
-  border: 1px dashed rgba(145, 134, 116, 0.32);
+  border: 1px dashed var(--border, rgba(145, 134, 116, 0.32));
   border-radius: 12px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8a8173);
   text-align: center;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.46);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.46));
 }
 
 .notebook-item {
   border: 1px solid transparent;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--bg-card, rgba(255, 255, 255, 0.72));
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
   color: inherit;
   text-align: left;
   cursor: pointer;
   padding: 11px 12px;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition: background var(--transition-fast, 0.2s) ease,
+              border-color var(--transition-fast, 0.2s) ease,
+              transform var(--transition-fast, 0.2s) ease;
 }
 
 .notebook-item:hover {
-  border-color: rgba(142, 106, 63, 0.18);
-  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--accent-soft, rgba(142, 106, 63, 0.18));
+  background: var(--bg, rgba(255, 255, 255, 0.92));
   transform: translateY(-1px);
 }
 
 .notebook-item.active {
-  border-color: rgba(142, 106, 63, 0.34);
-  background: rgba(245, 235, 222, 0.9);
-  box-shadow: 0 7px 18px rgba(142, 106, 63, 0.12);
+  border-color: var(--accent, rgba(142, 106, 63, 0.34));
+  background: var(--bg-soft-hover, rgba(245, 235, 222, 0.9));
+  box-shadow: 0 7px 18px var(--accent-soft, rgba(142, 106, 63, 0.12));
 }
 
 .notebook-item.disabled {
@@ -180,7 +168,7 @@ select {
 .item-title {
   font-size: 13px;
   font-weight: 570;
-  color: #352d21;
+  color: var(--text-main, #352d21);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -189,11 +177,11 @@ select {
 .item-meta {
   margin-top: 7px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8a8173);
 }
 
 .item-meta.saved {
-  color: var(--success);
+  color: var(--success, #2f8a57);
 }
 
 .workspace-pane {
@@ -206,12 +194,12 @@ select {
 
 .workspace-header {
   padding: 18px 22px 15px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(248, 243, 234, 0.78);
+  background: var(--bg-soft, rgba(248, 243, 234, 0.78));
   backdrop-filter: blur(4px);
   position: sticky;
   top: 0;
@@ -221,14 +209,14 @@ select {
 .workspace-title {
   font-size: 22px;
   font-weight: 620;
-  color: #2f2618;
+  color: var(--text-strong, #2f2618);
   line-height: 1.35;
 }
 
 .workspace-subtitle {
   margin-top: 7px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8a8173);
 }
 
 .workspace-actions {
@@ -245,30 +233,32 @@ select {
   border-radius: 11px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: transform var(--transition-fast, 0.2s) ease,
+              box-shadow var(--transition-fast, 0.2s) ease,
+              background var(--transition-fast, 0.2s) ease;
 }
 
 .primary-btn {
-  color: #fffdf8;
-  border-color: rgba(142, 106, 63, 0.28);
-  background: linear-gradient(145deg, #987045, #7c5a35);
-  box-shadow: 0 8px 20px rgba(124, 90, 53, 0.22);
+  color: white;
+  border-color: var(--accent-soft, rgba(142, 106, 63, 0.28));
+  background: var(--gradient-accent, linear-gradient(145deg, #987045, #7c5a35));
+  box-shadow: 0 8px 20px var(--accent-soft, rgba(124, 90, 53, 0.22));
 }
 
 .primary-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 11px 22px rgba(124, 90, 53, 0.26);
+  box-shadow: 0 11px 22px var(--accent-soft, rgba(124, 90, 53, 0.26));
 }
 
 .ghost-btn {
-  color: #4a4237;
-  border-color: var(--border-soft);
-  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-main, #4a4237);
+  border-color: var(--border-soft, rgba(145, 134, 116, 0.14));
+  background: var(--bg-card, rgba(255, 255, 255, 0.72));
 }
 
 .ghost-btn:hover {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(142, 106, 63, 0.28);
+  background: var(--bg, rgba(255, 255, 255, 0.92));
+  border-color: var(--accent-soft, rgba(142, 106, 63, 0.28));
 }
 
 .editor-body {
@@ -284,10 +274,10 @@ select {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
   border-radius: 16px;
-  background: var(--panel);
-  box-shadow: var(--shadow-card);
+  background: var(--bg-card, rgba(255, 255, 255, 0.9));
+  box-shadow: var(--shadow-card, 0 8px 22px rgba(74, 58, 36, 0.06));
   overflow: hidden;
 }
 
@@ -297,11 +287,11 @@ select {
 
 .panel-title {
   padding: 11px 14px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
   font-size: 12px;
   font-weight: 560;
-  color: var(--text-subtle);
-  background: rgba(248, 244, 236, 0.58);
+  color: var(--text-muted, #6a6255);
+  background: var(--bg-soft, rgba(248, 244, 236, 0.58));
 }
 
 #note-editor {
@@ -311,18 +301,18 @@ select {
   border: none;
   outline: none;
   background: transparent;
-  color: #2f2a21;
+  color: var(--text-main, #2f2a21);
   padding: 16px 17px 18px;
   line-height: 1.78;
   font-size: 15px;
 }
 
 #note-editor::placeholder {
-  color: #9b9386;
+  color: var(--text-muted, #9b9386);
 }
 
 #note-editor:focus {
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.4));
 }
 
 .note-preview {
@@ -332,10 +322,9 @@ select {
   padding: clamp(20px, 3vw, 38px) clamp(18px, 3vw, 42px);
   line-height: 1.9;
   font-size: 17px;
-  color: #30291f;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(252, 248, 240, 0.82));
-  font-family: "Source Serif 4", "Noto Serif SC", "Songti SC", serif;
+  color: var(--text-main, #30291f);
+  background: var(--bg, linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(252, 248, 240, 0.82)));
+  font-family: var(--font-serif, "Source Serif 4", "Noto Serif SC", "Songti SC", serif);
   font-feature-settings: "liga" 0, "calt" 0;
   font-variant-ligatures: none;
 }
@@ -350,7 +339,7 @@ select {
 .note-preview h4,
 .note-preview h5,
 .note-preview h6 {
-  color: #261d11;
+  color: var(--text-strong, #261d11);
   font-weight: 640;
   line-height: 1.46;
   margin: 1.45em 0 0.7em;
@@ -363,7 +352,7 @@ select {
 
 .note-preview h2 {
   font-size: 1.52em;
-  border-bottom: 1px solid rgba(145, 134, 116, 0.24);
+  border-bottom: 1px solid var(--border-soft, rgba(145, 134, 116, 0.24));
   padding-bottom: 0.38em;
 }
 
@@ -382,7 +371,7 @@ select {
 
 .note-preview p {
   margin: 0.85em 0;
-  color: #332d22;
+  color: var(--text-main, #332d22);
 }
 
 .note-preview ul,
@@ -393,36 +382,36 @@ select {
 
 .note-preview li {
   margin: 0.35em 0;
-  color: #332d22;
+  color: var(--text-main, #332d22);
 }
 
 .note-preview blockquote {
   margin: 1.05em 0;
   padding: 0.8em 0.96em;
-  border-left: 3px solid rgba(142, 106, 63, 0.46);
-  background: rgba(142, 106, 63, 0.08);
-  color: #5f5344;
+  border-left: 3px solid var(--accent, rgba(142, 106, 63, 0.46));
+  background: var(--accent-soft, rgba(142, 106, 63, 0.08));
+  color: var(--text-muted, #5f5344);
   border-radius: 0 9px 9px 0;
 }
 
 .note-preview hr {
   border: none;
-  border-top: 1px solid rgba(145, 134, 116, 0.28);
+  border-top: 1px solid var(--border-soft, rgba(145, 134, 116, 0.28));
   margin: 1.4em 0;
 }
 
 .note-preview code {
-  font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
-  background: rgba(145, 134, 116, 0.15);
-  color: #2c251b;
+  font-family: var(--font-mono, "JetBrains Mono", "Cascadia Mono", "Consolas", monospace);
+  background: var(--bg-soft, rgba(145, 134, 116, 0.15));
+  color: var(--text-main, #2c251b);
   border-radius: 5px;
   padding: 0.1em 0.38em;
   font-size: 0.94em;
 }
 
 .note-preview pre {
-  background: #f4eee4;
-  border: 1px solid rgba(145, 134, 116, 0.28);
+  background: var(--bg-soft, #f4eee4);
+  border: 1px solid var(--border-soft, rgba(145, 134, 116, 0.28));
   border-radius: 11px;
   padding: 13px 14px;
   margin: 1em 0;
@@ -444,23 +433,23 @@ select {
   font-size: 0.97em;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(145, 134, 116, 0.22);
+  box-shadow: inset 0 0 0 1px var(--border-soft, rgba(145, 134, 116, 0.22));
 }
 
 .note-preview th,
 .note-preview td {
-  border: 1px solid rgba(145, 134, 116, 0.2);
+  border: 1px solid var(--border-soft, rgba(145, 134, 116, 0.2));
   padding: 0.58em 0.7em;
   vertical-align: top;
 }
 
 .note-preview th {
   font-weight: 620;
-  background: rgba(228, 214, 191, 0.36);
+  background: var(--bg-soft, rgba(228, 214, 191, 0.36));
 }
 
 .note-preview tr:nth-child(even) td {
-  background: rgba(252, 248, 240, 0.78);
+  background: var(--bg-soft, rgba(252, 248, 240, 0.78));
 }
 
 .note-preview img {
@@ -482,11 +471,11 @@ select {
   right: 14px;
   bottom: 14px;
   width: min(208px, 28vw);
-  border: 1px solid rgba(145, 134, 116, 0.22);
+  border: 1px solid var(--border-soft, rgba(145, 134, 116, 0.22));
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--bg-card, rgba(255, 255, 255, 0.68));
   backdrop-filter: blur(4px);
-  box-shadow: 0 8px 20px rgba(74, 58, 36, 0.12);
+  box-shadow: 0 8px 20px var(--shadow-soft, rgba(74, 58, 36, 0.12));
   overflow: hidden;
   display: none;
   flex-direction: column;
@@ -496,11 +485,11 @@ select {
 .preview-toc-title {
   flex-shrink: 0;
   padding: 10px 10px 8px;
-  border-bottom: 1px solid rgba(145, 134, 116, 0.18);
+  border-bottom: 1px solid var(--border-soft, rgba(145, 134, 116, 0.18));
   font-size: 12px;
   font-weight: 620;
-  color: #574b3a;
-  background: rgba(255, 255, 255, 0.42);
+  color: var(--text-main, #574b3a);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.42));
 }
 
 .preview-toc-list {
@@ -516,24 +505,26 @@ select {
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: #5d5141;
+  color: var(--text-main, #5d5141);
   cursor: pointer;
   text-align: left;
   font-size: 12px;
   line-height: 1.35;
   padding: 6px 8px;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition: background var(--transition-fast, 0.2s) ease,
+              border-color var(--transition-fast, 0.2s) ease,
+              color var(--transition-fast, 0.2s) ease;
 }
 
 .preview-toc-item:hover {
-  background: rgba(142, 106, 63, 0.08);
-  border-color: rgba(142, 106, 63, 0.2);
+  background: var(--accent-soft, rgba(142, 106, 63, 0.08));
+  border-color: var(--accent-soft, rgba(142, 106, 63, 0.2));
 }
 
 .preview-toc-item.active {
-  color: #3f3427;
-  background: rgba(142, 106, 63, 0.13);
-  border-color: rgba(142, 106, 63, 0.26);
+  color: var(--text-strong, #3f3427);
+  background: var(--accent-soft, rgba(142, 106, 63, 0.13));
+  border-color: var(--accent-soft, rgba(142, 106, 63, 0.26));
 }
 
 .preview-toc-item.level-2 {
@@ -558,15 +549,15 @@ select {
 }
 
 .workspace-footer {
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
   padding: 10px 18px;
   font-size: 12px;
-  color: var(--text-muted);
-  background: rgba(248, 243, 234, 0.76);
+  color: var(--text-muted, #8a8173);
+  background: var(--bg-soft, rgba(248, 243, 234, 0.76));
 }
 
 .workspace-footer.error {
-  color: var(--danger);
+  color: var(--danger, #d6544a);
 }
 
 .save-toast {
@@ -579,17 +570,18 @@ select {
   max-width: min(560px, calc(100vw - 28px));
   padding: 12px 18px;
   border-radius: 14px;
-  border: 1px solid rgba(47, 138, 87, 0.3);
-  background: rgba(255, 255, 255, 0.98);
-  color: var(--success);
+  border: 1px solid var(--success-soft, rgba(47, 138, 87, 0.3));
+  background: var(--bg-card, rgba(255, 255, 255, 0.98));
+  color: var(--success, #2f8a57);
   font-size: 15px;
   font-weight: 600;
   text-align: center;
   line-height: 1.45;
-  box-shadow: 0 12px 28px rgba(74, 58, 36, 0.2);
+  box-shadow: 0 12px 28px var(--shadow-soft, rgba(74, 58, 36, 0.2));
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity var(--transition-fast, 0.2s) ease,
+              transform var(--transition-fast, 0.2s) ease;
 }
 
 .save-toast.show {
@@ -598,8 +590,8 @@ select {
 }
 
 .save-toast.error {
-  color: var(--danger);
-  border-color: rgba(214, 84, 74, 0.32);
+  color: var(--danger, #d6544a);
+  border-color: var(--danger-soft, rgba(214, 84, 74, 0.32));
 }
 
 body.layout-preview-only .editor-panel {
@@ -650,7 +642,7 @@ body.layout-editor-only .editor-body {
     max-width: none;
     max-height: 42vh;
     border-right: none;
-    border-bottom: 1px solid var(--border-soft);
+    border-bottom: 1px solid var(--border-soft, rgba(145, 134, 116, 0.14));
   }
 
   .workspace-header {
@@ -688,5 +680,3 @@ body.layout-editor-only .editor-body {
     scroll-behavior: auto !important;
   }
 }
-
-
