@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 后台 Service Worker
  * 版本：1.0.90
  */
@@ -36,6 +36,8 @@ async function handleMessage(message, sender) {
             return handleSetStorage(message.data);
         case 'WEBDAV_REQUEST':
             return handleWebdavRequest(message);
+        case 'THEME_CHANGED':
+            return handleThemeChanged(message, sender);
         default:
             throw new Error(`未知消息类型：${type}`);
     }
@@ -349,6 +351,66 @@ async function injectTimelineScript(tabId) {
         console.warn('[Service Worker] 时间轴补注入失败：', error.message);
     }
 }
+
+async function handleThemeChanged(message, sender) {
+    const { theme, config, source } = message;
+
+    console.log('[Service Worker] 收到主题变化通知，来源:', source);
+
+    try {
+        await broadcastThemeChangeToAllPages(theme, config, sender?.id);
+        await broadcastThemeChangeToContentScripts(theme, config);
+
+        return { success: true, message: '主题变化已广播' };
+    } catch (error) {
+        console.error('[Service Worker] 广播主题变化失败：', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function broadcastThemeChangeToAllPages(theme, config, excludeSenderId) {
+    const runtimeMessage = {
+        type: 'THEME_SYNC',
+        theme: theme,
+        config: config,
+        source: 'service-worker'
+    };
+
+    try {
+        await chrome.runtime.sendMessage(runtimeMessage);
+    } catch (error) {
+        if (!error.message.includes('Could not establish connection')) {
+            console.warn('[Service Worker] 广播主题变化给扩展页面失败：', error.message);
+        }
+    }
+}
+
+async function broadcastThemeChangeToContentScripts(theme, config) {
+    const tabs = await chrome.tabs.query({});
+    
+    for (const tab of tabs) {
+        if (!tab.id) continue;
+
+        try {
+            await chrome.tabs.sendMessage(tab.id, {
+                type: 'THEME_SYNC',
+                theme: theme,
+                config: config,
+                source: 'service-worker'
+            });
+        } catch (error) {
+            if (!error.message.includes('Could not establish connection')) {
+                console.debug(`[Service Worker] 标签页 ${tab.id} 没有内容脚本或已关闭`);
+            }
+        }
+    }
+}
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.note_helper_theme_config) {
+        console.log('[Service Worker] 检测到主题存储变化');
+    }
+});
 
 console.log('[Service Worker] 已启动');
 

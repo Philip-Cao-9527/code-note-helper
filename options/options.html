@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>高级设置 - CodeNote Helper</title>
     <link rel="stylesheet" href="options.css">
+    <script src="../shared/theme-center.js"></script>
 </head>
 
 <body>
@@ -26,6 +27,103 @@
                     <input type="checkbox" id="timeline-toggle">
                     <span class="slider"></span>
                 </label>
+            </div>
+        </section>
+
+        <section class="card" id="theme-settings-card">
+            <div class="card-title">主题设置</div>
+            <div class="card-note">可以选择预设主题，也可以自定义颜色、字体和过渡动画。配置会自动同步到所有打开的页面。</div>
+
+            <div class="section-grid" style="margin-top: 16px;">
+                <div class="summary-item">
+                    <div class="summary-label">当前主题</div>
+                    <div class="summary-value" id="current-theme-name">加载中...</div>
+                    <div class="summary-note" id="current-theme-type">预设主题</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">过渡动画</div>
+                    <div class="summary-value" id="animation-status">已启用</div>
+                    <div class="summary-note">控制主题切换时的平滑过渡效果</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="section-title" style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">预设主题</div>
+                <div class="theme-presets-grid" id="theme-presets-grid">
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="switch-row" style="margin-bottom: 16px;">
+                    <div class="switch-copy">
+                        <div class="switch-title">过渡动画</div>
+                        <div class="switch-desc">启用主题切换时的平滑过渡动画。</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="animation-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="transition-duration">过渡时长 (秒)</label>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="range" id="transition-duration" min="0.1" max="1" step="0.1" value="0.3" style="flex: 1;">
+                        <span id="transition-duration-value" style="min-width: 40px; text-align: center; font-weight: 600;">0.3s</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="section-title" style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">自定义主题编辑器</div>
+                <div class="card-note" style="margin-bottom: 16px; font-size: 12px; color: #64748b;">
+                    基于预设主题创建自定义主题，修改颜色后点击"保存自定义主题"。
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-theme-name">主题名称</label>
+                    <input type="text" id="custom-theme-name" placeholder="输入自定义主题名称">
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-base-theme">基于预设主题</label>
+                    <select id="custom-base-theme" class="filter-select" style="width: 100%;">
+                        <option value="dark">暗黑</option>
+                        <option value="light">明亮</option>
+                        <option value="minimal">极简</option>
+                        <option value="gradient">渐变</option>
+                    </select>
+                </div>
+
+                <div style="margin-top: 16px;">
+                    <div class="section-title" style="margin-bottom: 12px; font-size: 13px; font-weight: 600;">颜色配置</div>
+                    <div class="form-grid" id="custom-colors-grid">
+                    </div>
+                </div>
+
+                <div class="actions-row" style="margin-top: 20px;">
+                    <button class="btn btn-secondary" id="btn-preview-custom-theme">预览效果</button>
+                    <button class="btn btn-primary" id="btn-save-custom-theme">保存自定义主题</button>
+                    <button class="btn btn-secondary" id="btn-reset-custom-theme">重置为预设</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="section-title" style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">我的自定义主题</div>
+                <div id="custom-themes-list">
+                    <div class="empty-state" style="text-align: center; padding: 20px;">
+                        暂无自定义主题
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="section-title" style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">主题备份与导入</div>
+                <div class="actions-row">
+                    <button class="btn btn-secondary" id="btn-export-theme">导出主题配置</button>
+                    <button class="btn btn-secondary" id="btn-import-theme">导入主题配置</button>
+                    <input type="file" id="import-theme-file" accept=".json,application/json" style="display: none;">
+                </div>
             </div>
         </section>
 
