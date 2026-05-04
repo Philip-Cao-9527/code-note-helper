@@ -8,7 +8,7 @@
 
 ![Version](https://img.shields.io/badge/version-1.1.3-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen) [![LINUX DO](https://img.shields.io/badge/LINUX%20DO-社区交流支持-2ea44f)](https://linux.do)
 
-[功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
+[功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [后续开发计划](#roadmap) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
 </div>
 
@@ -200,6 +200,36 @@
 | [Gemini](https://gemini.google.com/) | AI 对话时间轴 |
 | [Claude](https://www.anthropic.com/claude) | AI 对话时间轴 |
 
+---
+
+<a id="roadmap" name="roadmap"></a>
+## 🧭 后续开发计划
+
+CodeNote Helper 的主线目标会继续围绕**算法刷题、深度学习复盘、AI 辅助学习、长期记忆管理以及求职场景适配**展开。为了方便贡献者了解项目方向，下面列出当前更优先考虑的开发计划。
+
+### 近期优先计划
+
+- [ ] **适配洛谷以及Codeforces**：面向国内算法竞赛和刷题用户，支持在洛谷题目页生成结构化笔记，尽量复用现有算法笔记链路，同时保持站点逻辑隔离，避免影响 LeetCode / CodeFun2000 现有功能。
+- [ ] **笔记页主题切换**：优先只针对独立笔记本页面增加主题切换能力，保留当前 Claude 的风格作为默认主题，再逐步探索暗色、极简、护眼等主题。不计划一开始就做全平台主题同步，避免过早影响 popup、options、content scripts 和第三方站点页面。
+- [ ] **增加深度学习复习功能**：在现有力扣间隔复习系统的基础上，将复习能力扩展到 Deep-ML / TorchCode 等深度学习手撕代码场景的定期回顾，让深度学习手撕代码进入长期复习队列。
+- [ ] **融入内置大语言模型与知识库**：在现有直连 API 和本地笔记的基础上，探索更完整的 AI 学习工作流，例如基于历史笔记、题单、复习记录进行上下文检索，让 AI 不只是生成单篇笔记，而是能结合你的长期学习资料给出更贴合个人学习习惯的回答。
+- [ ] **增加更多云盘同步方式**：在现有坚果云 WebDAV 备份的基础上，探索 Google Drive、OneDrive 等国外云盘同步方案，方便不同地区和不同设备环境下的用户备份与恢复数据。此类功能会优先考虑用户主动授权、用户主动触发和最小权限范围，避免无故扩大浏览器扩展权限。
+- [ ] **加入面试复盘功能**：面向算法岗、开发岗的面试准备场景，支持记录面试问题、追问、回答表现、薄弱知识点和后续复习任务，打造完整的求职备战系统。
+- [ ] **探索手机端复习提醒**：探索通过飞书等轻量手机端应用查看每日复习状态，并接收复习提醒。目标是让用户不仅能在浏览器里刷题和记笔记，也能在手机端快速看到今天要复习哪些题目，形成更自然的每日学习提醒链路。
+
+
+### 贡献建议
+
+如果你想参与开发，欢迎优先围绕上面的计划提交 Issue 或 Pull Request。为了降低维护成本，也为了避免一次性改动过大，建议遵循以下原则：
+
++ **先提 Issue，再提大功能 PR**：如果是新站点适配、主题系统、知识库、面试复盘这类较大的功能，建议先开 Issue 说明需求、使用场景和预期效果，再开始实现。
++ **一个 PR 只解决一个问题**：尽量避免把主题、样式、service worker、manifest、题单导入、日志调试等无关改动混在同一个 PR 里。
++ **优先做最小必要改动**：能局部修复就不要大范围重构；能复用现有模块就不要另外设计一套平行架构。
++ **涉及权限和站点适配时要格外谨慎**：不要无故扩大 `host_permissions`、`content_scripts.matches` 或新增远程访问范围。浏览器扩展的权限变化会影响用户信任和 Chrome Web Store 审核成本。
++ **Bug 类问题请尽量提供复现信息**：包括页面链接、操作步骤、预期结果、实际结果、控制台报错截图、浏览器版本和扩展版本。能够稳定复现的问题，会更容易被快速修复。
++ **浏览器行为相关改动需要测试说明**：如果修改了页面注入、DOM 抓取、点击跳转、滚动定位、API 调用或 service worker 行为，请尽量补充手动测试步骤、截图或自动化测试说明。
+
+---
 
 <a id="sync-backup" name="sync-backup"></a>
 ## ☁️ 同步与备份说明
@@ -259,6 +289,8 @@
 
 - 🐛 [报告 Bug 或功能建议](https://github.com/Philip-Cao-9527/code-note-helper/issues)
 
+如果你准备提交 PR，建议先看一下上面的 [后续开发计划](#roadmap)。项目目前更欢迎“小而清晰”的改动：一个 PR 聚焦一个问题，附带清楚的复现方式、修改说明和测试方式。对于新站点适配、主题系统、知识库、面试复盘等较大功能，建议先通过 Issue 讨论方案，再拆成多个小 PR 逐步实现。
+
 ---
 
 
@@ -290,6 +322,10 @@
 3. Open `chrome://extensions/` (or `edge://extensions/`), enable **Developer Mode**.
 4. Click **Load unpacked** and select the unzipped folder.
 
+### Roadmap
+
+The project will continue to focus on algorithm practice, deep learning review, AI-assisted study workflows, and long-term memory management. Planned directions include adapting Luogu and Codeforces, improving note themes, integrating large language models and personal knowledge bases, and adding interview review workflows.
+
 ### Privacy & Data
 All your notes and progress stay in your local browser by default. Optional features like Nutstore WebDAV backup and API generation only connect to your personal cloud storage or the AI models you configure. No data is ever collected by the developer.
 
@@ -298,5 +334,4 @@ All your notes and progress stay in your local browser by default. Optional feat
 
 ### License
 [MIT](./LICENSE) © 2026 cao
-
 
