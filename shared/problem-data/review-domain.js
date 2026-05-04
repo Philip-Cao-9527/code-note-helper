@@ -1,6 +1,6 @@
 /**
  * 复习域公共逻辑（状态归一化 / reviewMeta / FSRS 输入组装）
- * 版本：1.1.1
+ * 版本：1.1.3
  */
 
 (function () {
@@ -8,6 +8,7 @@
 
     const modules = window.NoteHelperProblemDataModules = window.NoteHelperProblemDataModules || {};
     const reviewFsrs = modules.reviewFsrs || {};
+    const reviewSettings = modules.reviewSettings || {};
     const DAY_MS = 24 * 60 * 60 * 1000;
     const REVIEW_RATING_LABELS = {
         1: '很难想起',
@@ -47,9 +48,9 @@
         return parseRating(rating);
     }
 
-    function buildNextFsrsCard(lastCard, nowDate, rating) {
+    function buildNextFsrsCard(lastCard, nowDate, rating, params) {
         if (typeof reviewFsrs.buildNextFsrsCard === 'function') {
-            return reviewFsrs.buildNextFsrsCard(lastCard, nowDate, rating, reviewFsrs.fsrsParamsRef);
+            return reviewFsrs.buildNextFsrsCard(lastCard, nowDate, rating, params || reviewFsrs.fsrsParamsRef);
         }
         throw new Error('FSRS 内核未加载');
     }
@@ -259,6 +260,18 @@
         return REVIEW_RATING_LABELS[parseRating(rating)] || '未设置';
     }
 
+    function formatReviewDate(nextReviewAt) {
+        if (reviewSettings && typeof reviewSettings.formatReviewDate === 'function') {
+            return reviewSettings.formatReviewDate(nextReviewAt);
+        }
+        const date = new Date(nextReviewAt || 0);
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     function buildNextReviewState(record, rating, nowTime = Date.now(), options = {}) {
         const safeRating = parseRating(rating);
         if (!safeRating) {
@@ -277,7 +290,7 @@
         }
 
         const fsrsRating = getFsrsRatingFromMemoryRating(safeRating);
-        const nextFsrsCard = buildNextFsrsCard(fsrsCard, nowDate, fsrsRating);
+        const nextFsrsCard = buildNextFsrsCard(fsrsCard, nowDate, fsrsRating, options.fsrsParams);
         const nextReviewTime = nextFsrsCard.due.getTime();
         const nextReviewIso = nextFsrsCard.due.toISOString();
 
@@ -344,6 +357,7 @@
         buildFsrsInputCard,
         getRecordReviewMeta,
         getReviewRatingLabel,
+        formatReviewDate,
         buildReviewPreviewText,
         buildNextReviewState,
         buildReviewRatingPreviewsByRecord

@@ -1,6 +1,6 @@
 /**
  * 问题数据常量定义
- * 版本：1.1.0
+ * 版本：1.1.3
  */
 
 (function () {
@@ -70,6 +70,14 @@
             }
         },
         DEFAULT_SYNC_SETTINGS: {
+            reviewFsrs: {
+                enabled: false,
+                preset: 'normal',
+                custom: {
+                    request_retention: 0.9,
+                    maximum_interval: 365
+                }
+            },
             webdav: {
                 enabled: false,
                 provider: 'nutstore',

@@ -6,7 +6,7 @@
 
 一个专为算法刷题、深度学习<br/>和 AI 学习场景打造的浏览器扩展<br/>自动生成高质量复盘笔记<br/>内置遗忘曲线驱动的间隔复习<br/>轻松驾驭超长对话<br/>让刷过的每一道题都成为真正的技术资产
 
-![Version](https://img.shields.io/badge/version-1.1.2-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen) [![LINUX DO](https://img.shields.io/badge/LINUX%20DO-社区交流支持-2ea44f)](https://linux.do)
+![Version](https://img.shields.io/badge/version-1.1.3-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Chrome/Edge](https://img.shields.io/badge/Browser-Chrome%20|%20Edge-brightgreen) [![LINUX DO](https://img.shields.io/badge/LINUX%20DO-社区交流支持-2ea44f)](https://linux.do)
 
 [功能亮点](#features) · [快速开始](#quick-start) · [使用指南](#guide) · [权限说明](#permissions) · [同步与备份说明](#sync-backup) · [API 配置](#api-config) · [English](#english)
 
@@ -260,6 +260,8 @@
 - 🐛 [报告 Bug 或功能建议](https://github.com/Philip-Cao-9527/code-note-helper/issues)
 
 ---
+
+
 
 ## 🙏致谢
 - [Leetcode-Mastery-Scheduler](https://github.com/xiaohajiayou/Leetcode-Mastery-Scheduler) - 复习功能的早期灵感来源之一，参考了该项目的部分数据同步设计思路。CodeNote Helper 在此基础上做了更深度的整合，将复习系统直接嵌入题目详情页和 Popup 看板，引入 FSRS 间隔重复算法来动态计算每道题的 Recall Probability 和最优复习间隔，并与笔记生成、题单追踪打通，形成从做题、记笔记到间隔复习的完整闭环。同时还覆盖了深度学习手撕代码场景，支持 TorchCode 和 Deep-ML 的笔记生成与面试考点深挖，更贴合算法岗求职备战的实际需求。

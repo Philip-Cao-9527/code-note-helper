@@ -110,6 +110,54 @@
                 </div>
             </div>
 
+            <div class="review-config-block">
+                <div class="switch-row" style="margin-top: 18px;">
+                    <div class="switch-copy">
+                        <div class="switch-title">开启 FSRS 参数配置</div>
+                        <div class="switch-desc">关闭时继续沿用当前默认复习参数；开启后可切换高强度、正常、佛系或自定义复习强度。</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="review-fsrs-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div id="review-fsrs-settings-panel" style="display: none;">
+                    <div class="preset-group" style="margin-top: 14px;">
+                        <div class="preset-title">复习策略</div>
+                        <label class="preset-option">
+                            <input type="radio" name="review-fsrs-preset" value="intensive">
+                            <span><strong>高强度复习</strong>：更适合短期冲刺，最长间隔 45 天。</span>
+                        </label>
+                        <label class="preset-option">
+                            <input type="radio" name="review-fsrs-preset" value="normal">
+                            <span><strong>正常复习</strong>：与当前默认参数一致。</span>
+                        </label>
+                        <label class="preset-option">
+                            <input type="radio" name="review-fsrs-preset" value="relaxed">
+                            <span><strong>佛系复习</strong>：记忆保持率更低，但最长间隔仍控制在 365 天内。</span>
+                        </label>
+                        <label class="preset-option">
+                            <input type="radio" name="review-fsrs-preset" value="custom">
+                            <span><strong>自定义</strong>：手动设置关键参数。</span>
+                        </label>
+                    </div>
+
+                    <div class="form-grid review-custom-grid" id="review-fsrs-custom-panel" style="display: none; margin-top: 14px;">
+                        <div class="form-group">
+                            <label for="review-fsrs-request-retention">记忆保持率</label>
+                            <input type="number" id="review-fsrs-request-retention" min="0.01" max="1" step="0.01" placeholder="0.9">
+                            <div class="form-hint">数值越高，复习越频繁。推荐范围 0.80 - 0.99。</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="review-fsrs-maximum-interval">最大间隔天数</label>
+                            <input type="number" id="review-fsrs-maximum-interval" min="1" step="1" placeholder="365">
+                            <div class="form-hint">用于限制最大复习间隔天数。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="sync-dirty-hint" id="sync-dirty-hint" style="display: none;">同步设置已修改，请点击下方按钮保存。</div>
             <div class="actions-row" style="margin-top: 12px;">
                 <button class="btn btn-primary" id="btn-save-sync">保存同步设置</button>
@@ -166,6 +214,7 @@
     <script src="../shared/problem-data/helpers.js"></script>
     <script src="../shared/problem-data/sync-core.js"></script>
     <script src="../shared/problem-data/review-fsrs.js"></script>
+    <script src="../shared/problem-data/review-settings.js"></script>
     <script src="../shared/problem-data/review-domain.js"></script>
     <script src="../shared/problem-data/records.js"></script>
     <script src="../shared/problem-data/importers/hot100.js"></script>

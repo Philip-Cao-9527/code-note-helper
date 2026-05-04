@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录共享仓库组装入口
- * 版本：1.1.2
+ * 版本：1.1.3
  */
 
 (function () {
@@ -38,6 +38,11 @@
             getReviewRatingPreviews: records.getReviewRatingPreviews,
             rateProblemMemory: records.rateProblemMemory,
             markProblemReviewReminded: records.markProblemReviewReminded,
+            getReviewFsrsSettings: records.getReviewFsrsSettings,
+            setReviewFsrsSettings: records.setReviewFsrsSettings,
+            getEffectiveReviewFsrsParams: records.getEffectiveReviewFsrsParams,
+            rebuildReviewSchedulesForCurrentConfig: records.rebuildReviewSchedulesForCurrentConfig,
+            formatReviewDate: records.formatReviewDate,
             deleteProblemRecord: records.deleteProblemRecord,
             saveProblemNote: records.saveProblemNote,
             getProblemLists: lists.getProblemLists,

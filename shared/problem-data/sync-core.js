@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录同步核心
- * 版本：1.1.0
+ * 版本：1.1.3
  */
 
 (function () {
@@ -31,14 +31,38 @@
     modules.providers = modules.providers || {};
 
     function normalizeSyncSettings(settings) {
+        const reviewFsrsDefault = helpers.cloneValue(DEFAULT_SYNC_SETTINGS.reviewFsrs || {
+            enabled: false,
+            preset: 'normal',
+            custom: {
+                request_retention: 0.9,
+                maximum_interval: 365
+            }
+        });
         const webdav = {
             ...helpers.cloneValue(DEFAULT_SYNC_SETTINGS.webdav),
             ...((settings && settings.webdav) || {})
+        };
+        const reviewFsrs = {
+            ...reviewFsrsDefault,
+            ...((settings && settings.reviewFsrs) || {}),
+            custom: {
+                ...(reviewFsrsDefault.custom || {}),
+                ...((((settings || {}).reviewFsrs || {}).custom) || {})
+            }
         };
 
         return {
             ...helpers.cloneValue(DEFAULT_SYNC_SETTINGS),
             ...(settings || {}),
+            reviewFsrs: {
+                enabled: Boolean(reviewFsrs.enabled),
+                preset: String(reviewFsrs.preset || reviewFsrsDefault.preset || 'normal').trim().toLowerCase() || 'normal',
+                custom: {
+                    request_retention: Number(reviewFsrs.custom && reviewFsrs.custom.request_retention || reviewFsrsDefault.custom.request_retention || 0.9),
+                    maximum_interval: Math.max(1, Math.floor(Number(reviewFsrs.custom && reviewFsrs.custom.maximum_interval || reviewFsrsDefault.custom.maximum_interval || 365)))
+                }
+            },
             webdav: {
                 ...webdav,
                 enabled: Boolean(webdav.enabled),
@@ -672,6 +696,7 @@
         const localRecords = await helpers.readLocal(STORAGE_KEYS.problemRecords, {});
         const localLists = await helpers.readLocal(STORAGE_KEYS.problemLists, {});
         const localTombstones = await getSyncTombstones();
+        const localSettings = await getSyncSettings();
 
         const incomingTombstones = normalizeTombstones(incoming.tombstones);
         const nextTombstones = normalizeTombstones({
@@ -722,6 +747,13 @@
             [STORAGE_KEYS.problemLists]: nextLists,
             [STORAGE_KEYS.syncTombstones]: nextTombstones
         };
+
+        if (incoming.settings && typeof incoming.settings === 'object' && incoming.settings.reviewFsrs) {
+            payload[STORAGE_KEYS.syncSettings] = normalizeSyncSettings({
+                ...localSettings,
+                reviewFsrs: incoming.settings.reviewFsrs
+            });
+        }
 
         await writeLocalMultiple(payload, {
             autoSync: config.autoSync,

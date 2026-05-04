@@ -1,6 +1,6 @@
 ﻿/**
  * 高级设置页脚本
- * 版本：1.1.1
+ * 版本：1.1.3
  */
 
 (function () {
@@ -103,6 +103,9 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         const store = window.NoteHelperProblemData;
+        const reviewSettingsModule = window.NoteHelperProblemDataModules && window.NoteHelperProblemDataModules.reviewSettings
+            ? window.NoteHelperProblemDataModules.reviewSettings
+            : null;
         if (!store) {
             console.error('[Options] 共享数据仓库未加载');
             return;
@@ -130,6 +133,12 @@
             webdavLastStatus: document.getElementById('webdav-last-status'),
             webdavLastError: document.getElementById('webdav-last-error'),
             webdavSettingsPanel: document.getElementById('webdav-settings-panel'),
+            reviewFsrsToggle: document.getElementById('review-fsrs-toggle'),
+            reviewFsrsSettingsPanel: document.getElementById('review-fsrs-settings-panel'),
+            reviewFsrsPresetOptions: Array.from(document.querySelectorAll('input[name="review-fsrs-preset"]')),
+            reviewFsrsCustomPanel: document.getElementById('review-fsrs-custom-panel'),
+            reviewFsrsRequestRetention: document.getElementById('review-fsrs-request-retention'),
+            reviewFsrsMaximumInterval: document.getElementById('review-fsrs-maximum-interval'),
             apiUrl: document.getElementById('api-url'),
             apiKey: document.getElementById('api-key'),
             apiModel: document.getElementById('api-model'),
@@ -187,6 +196,82 @@
                 : 'none';
         }
 
+        function getSelectedReviewFsrsPreset() {
+            const selected = elements.reviewFsrsPresetOptions.find((input) => input.checked);
+            return selected ? selected.value : 'normal';
+        }
+
+        function setSelectedReviewFsrsPreset(value) {
+            const preset = String(value || 'normal').trim().toLowerCase();
+            elements.reviewFsrsPresetOptions.forEach((input) => {
+                input.checked = input.value === preset;
+            });
+        }
+
+        function applyReviewFsrsPanelVisibility() {
+            if (!elements.reviewFsrsSettingsPanel) return;
+            const enabled = Boolean(elements.reviewFsrsToggle && elements.reviewFsrsToggle.checked);
+            elements.reviewFsrsSettingsPanel.style.display = enabled ? '' : 'none';
+            applyReviewFsrsCustomPanelVisibility();
+        }
+
+        function applyReviewFsrsCustomPanelVisibility() {
+            if (!elements.reviewFsrsCustomPanel) return;
+            const enabled = Boolean(elements.reviewFsrsToggle && elements.reviewFsrsToggle.checked);
+            const isCustom = getSelectedReviewFsrsPreset() === 'custom';
+            elements.reviewFsrsCustomPanel.style.display = enabled && isCustom ? '' : 'none';
+        }
+
+        function buildReviewFsrsSettingsFromInputs() {
+            const defaultSettings = reviewSettingsModule && reviewSettingsModule.DEFAULT_REVIEW_FSRS_SETTINGS
+                ? reviewSettingsModule.DEFAULT_REVIEW_FSRS_SETTINGS
+                : {
+                    enabled: false,
+                    preset: 'normal',
+                    custom: {
+                        request_retention: 0.9,
+                        maximum_interval: 365
+                    }
+                };
+            const preset = getSelectedReviewFsrsPreset();
+            const requestRetentionText = String(elements.reviewFsrsRequestRetention && elements.reviewFsrsRequestRetention.value || '').trim();
+            const maximumIntervalText = String(elements.reviewFsrsMaximumInterval && elements.reviewFsrsMaximumInterval.value || '').trim();
+            const custom = {
+                request_retention: requestRetentionText === ''
+                    ? defaultSettings.custom.request_retention
+                    : Number(requestRetentionText),
+                maximum_interval: maximumIntervalText === ''
+                    ? defaultSettings.custom.maximum_interval
+                    : Number(maximumIntervalText)
+            };
+            return {
+                enabled: Boolean(elements.reviewFsrsToggle && elements.reviewFsrsToggle.checked),
+                preset,
+                custom
+            };
+        }
+
+        function validateReviewFsrsSettings(settings) {
+            if (!settings.enabled || settings.preset !== 'custom') {
+                return { ok: true };
+            }
+
+            if (!(settings.custom.request_retention > 0 && settings.custom.request_retention <= 1)) {
+                return {
+                    ok: false,
+                    message: '记忆保持率必须大于 0 且不超过 1'
+                };
+            }
+            if (!Number.isFinite(settings.custom.maximum_interval) || settings.custom.maximum_interval < 1) {
+                return {
+                    ok: false,
+                    message: '最大间隔天数必须是大于 0 的整数'
+                };
+            }
+
+            return { ok: true };
+        }
+
         async function loadApiSettings() {
             const result = await chrome.storage.local.get(['api_url', 'api_key', 'api_model']);
             elements.apiUrl.value = result.api_url || 'https://api.openai.com/v1';
@@ -227,7 +312,29 @@
             elements.webdavLastStatus.textContent = formatStatusText(overview.webdavLastStatus);
             elements.webdavLastError.textContent = overview.webdavLastError?.message || '暂无';
 
+            const reviewFsrsSettings = reviewSettingsModule && typeof reviewSettingsModule.extractReviewFsrsSettings === 'function'
+                ? reviewSettingsModule.extractReviewFsrsSettings(settings)
+                : (settings.reviewFsrs || {
+                    enabled: false,
+                    preset: 'normal',
+                    custom: {
+                        request_retention: 0.9,
+                        maximum_interval: 365
+                    }
+                });
+            if (elements.reviewFsrsToggle) {
+                elements.reviewFsrsToggle.checked = Boolean(reviewFsrsSettings.enabled);
+            }
+            setSelectedReviewFsrsPreset(reviewFsrsSettings.preset || 'normal');
+            if (elements.reviewFsrsRequestRetention) {
+                elements.reviewFsrsRequestRetention.value = String(reviewFsrsSettings.custom.request_retention || 0.9);
+            }
+            if (elements.reviewFsrsMaximumInterval) {
+                elements.reviewFsrsMaximumInterval.value = String(reviewFsrsSettings.custom.maximum_interval || 365);
+            }
+
             applyWebdavPanelVisibility();
+            applyReviewFsrsPanelVisibility();
             clearSyncDirty();
         }
 
@@ -240,8 +347,17 @@
 
         async function saveSyncSettings() {
             const current = await store.getSyncSettings();
+            const reviewFsrsDraft = buildReviewFsrsSettingsFromInputs();
+            const validation = validateReviewFsrsSettings(reviewFsrsDraft);
+            if (!validation.ok) {
+                throw new Error(validation.message);
+            }
+            const normalizedReviewFsrs = reviewSettingsModule && typeof reviewSettingsModule.normalizeReviewFsrsSettings === 'function'
+                ? reviewSettingsModule.normalizeReviewFsrsSettings(reviewFsrsDraft)
+                : reviewFsrsDraft;
             const nextSettings = {
                 ...(current || {}),
+                reviewFsrs: normalizedReviewFsrs,
                 webdav: {
                     enabled: elements.webdavToggle.checked,
                     provider: 'nutstore',
@@ -252,7 +368,14 @@
                 }
             };
             await store.setSyncSettings(nextSettings);
-            return nextSettings;
+            const currentReviewFsrs = reviewSettingsModule && typeof reviewSettingsModule.extractReviewFsrsSettings === 'function'
+                ? reviewSettingsModule.extractReviewFsrsSettings(current || {})
+                : (current.reviewFsrs || null);
+            const reviewFsrsChanged = JSON.stringify(currentReviewFsrs) !== JSON.stringify(normalizedReviewFsrs);
+            return {
+                nextSettings,
+                reviewFsrsChanged
+            };
         }
 
         window.addEventListener('beforeunload', (event) => {
@@ -275,6 +398,27 @@
         elements.webdavToggle.addEventListener('change', () => {
             applyWebdavPanelVisibility();
             markSyncDirty();
+        });
+
+        if (elements.reviewFsrsToggle) {
+            elements.reviewFsrsToggle.addEventListener('change', () => {
+                applyReviewFsrsPanelVisibility();
+                markSyncDirty();
+            });
+        }
+
+        elements.reviewFsrsPresetOptions.forEach((input) => {
+            input.addEventListener('change', () => {
+                applyReviewFsrsCustomPanelVisibility();
+                markSyncDirty();
+            });
+        });
+
+        [elements.reviewFsrsRequestRetention, elements.reviewFsrsMaximumInterval].forEach((input) => {
+            if (!input) return;
+            input.addEventListener('input', () => {
+                markSyncDirty();
+            });
         });
 
         [elements.webdavEmail, elements.webdavPassword, elements.webdavRemotePath].forEach((input) => {
@@ -323,7 +467,10 @@
         elements.btnSaveSync.addEventListener('click', async () => {
             try {
                 setBusy(elements.btnSaveSync, true);
-                await saveSyncSettings();
+                const saveResult = await saveSyncSettings();
+                if (saveResult.reviewFsrsChanged && typeof store.rebuildReviewSchedulesForCurrentConfig === 'function') {
+                    await store.rebuildReviewSchedulesForCurrentConfig();
+                }
                 await loadSyncSection();
                 clearSyncDirty();
                 showToast('同步设置已保存');

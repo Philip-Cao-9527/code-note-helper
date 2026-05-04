@@ -1,6 +1,6 @@
 /**
  * Popup 交互动作
- * 版本：1.1.2
+ * 版本：1.1.3
  */
 
 (function () {
@@ -26,6 +26,17 @@
     async function openUrl(url) {
         if (!url) return;
         await chrome.tabs.create({ url, active: true });
+    }
+
+    function buildReviewSuccessMessage(store, result, fallbackMessage) {
+        const nextReviewAt = result && result.review && result.review.nextReviewAt;
+        const formattedDate = store && typeof store.formatReviewDate === 'function'
+            ? store.formatReviewDate(nextReviewAt)
+            : '';
+        if (!formattedDate) {
+            return fallbackMessage;
+        }
+        return `${fallbackMessage}，下次复习时间为 ${formattedDate}`;
     }
 
     function buildNotesPageUrl(noteTarget) {
@@ -563,7 +574,7 @@
                         return;
                     }
                     await refreshData();
-                    showToast('记忆状态已更新');
+                    showToast(buildReviewSuccessMessage(store, result, '记忆状态已更新'), 3200);
                 } catch (error) {
                     console.error('[Popup] 快捷复习失败：', error);
                     showToast('更新失败，请稍后重试');

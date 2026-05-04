@@ -1,6 +1,6 @@
 ﻿/**
  * 刷题记录模块
- * 版本：1.1.1
+ * 版本：1.1.3
  */
 
 (function () {
@@ -18,6 +18,8 @@
     const LEETCODE_SITES = new Set(['leetcode.cn', 'leetcode.com']);
     const DEEP_LEARNING_SITES = new Set(['deep-ml.com', 'duoan-torchcode.hf.space']);
     const reviewDomain = modules.reviewDomain || {};
+    const reviewFsrs = modules.reviewFsrs || {};
+    const reviewSettings = modules.reviewSettings || {};
     const REQUIRED_REVIEW_DOMAIN_FUNCTIONS = [
         'normalizeReviewState',
         'buildDefaultReviewState',
@@ -36,6 +38,13 @@
     const buildDefaultReviewState = reviewDomain.buildDefaultReviewState;
     const parseRating = reviewDomain.parseRating;
     const forgettingCurve = reviewDomain.forgettingCurve;
+
+    if (typeof reviewFsrs.rescheduleExistingFsrsCard !== 'function') {
+        throw new Error('FSRS 内核未正确加载：缺少 rescheduleExistingFsrsCard');
+    }
+    if (typeof reviewSettings.getEffectiveReviewFsrsParams !== 'function' || typeof reviewSettings.normalizeReviewFsrsSettings !== 'function') {
+        throw new Error('复习参数配置模块未正确加载');
+    }
 
     function getLocalDateKeyFromTime(input) {
         const date = input instanceof Date ? input : new Date(input || Date.now());
@@ -76,12 +85,103 @@
         return reviewDomain.getRecordReviewMeta(record, nowTime, { isLeetcodeSite });
     }
 
-    function buildNextReviewState(record, rating, nowTime = Date.now()) {
-        return reviewDomain.buildNextReviewState(record, rating, nowTime, { isLeetcodeSite });
+    function buildNextReviewState(record, rating, nowTime = Date.now(), fsrsParams) {
+        return reviewDomain.buildNextReviewState(record, rating, nowTime, { isLeetcodeSite, fsrsParams });
     }
 
-    function buildReviewRatingPreviewsByRecord(record, nowTime = Date.now()) {
-        return reviewDomain.buildReviewRatingPreviewsByRecord(record, nowTime, { isLeetcodeSite });
+    function buildReviewRatingPreviewsByRecord(record, nowTime = Date.now(), fsrsParams) {
+        return reviewDomain.buildReviewRatingPreviewsByRecord(record, nowTime, { isLeetcodeSite, fsrsParams });
+    }
+
+    function formatReviewDate(value) {
+        return typeof reviewDomain.formatReviewDate === 'function'
+            ? reviewDomain.formatReviewDate(value)
+            : '';
+    }
+
+    async function getReviewFsrsSettings() {
+        return reviewSettings.getReviewFsrsSettings();
+    }
+
+    async function getEffectiveReviewFsrsParams() {
+        const settings = await getReviewFsrsSettings();
+        return reviewSettings.getEffectiveReviewFsrsParams(settings);
+    }
+
+    function rebuildStoredReviewStateForParams(record, fsrsParams, nowTime = Date.now()) {
+        if (!record || !isLeetcodeSite(record.site)) return null;
+        const currentReview = normalizeReviewState(record.review, nowTime);
+        if (!currentReview.enabled || !currentReview.fsrsState) {
+            return null;
+        }
+
+        const rebuilt = reviewFsrs.rescheduleExistingFsrsCard(currentReview.fsrsState, fsrsParams);
+        if (!rebuilt || !rebuilt.nextReviewAt) {
+            return null;
+        }
+
+        const nextReviewAt = rebuilt.nextReviewAt;
+        const nextReview = rebuilt.nextReview;
+        const previousNextReviewAt = String(currentReview.nextReviewAt || '');
+        const previousNextReview = Number(currentReview.fsrsState.nextReview || 0);
+        if (previousNextReviewAt === nextReviewAt && previousNextReview === nextReview) {
+            return null;
+        }
+
+        return {
+            ...currentReview,
+            nextReviewAt,
+            fsrsState: {
+                ...currentReview.fsrsState,
+                nextReview
+            }
+        };
+    }
+
+    async function rebuildReviewSchedulesForCurrentConfig(options = {}) {
+        const resolvedNowTime = Number(options.nowTime);
+        const nowTime = Number.isFinite(resolvedNowTime) ? resolvedNowTime : Date.now();
+        const fsrsParams = options.fsrsParams || await getEffectiveReviewFsrsParams();
+        const recordsMap = await getProblemRecords();
+        let updatedCount = 0;
+
+        Object.keys(recordsMap || {}).forEach((recordId) => {
+            const record = recordsMap[recordId];
+            const rebuiltReview = rebuildStoredReviewStateForParams(record, fsrsParams, nowTime);
+            if (!rebuiltReview) return;
+            updatedCount += 1;
+            recordsMap[recordId] = {
+                ...record,
+                review: rebuiltReview,
+                updatedAt: new Date(nowTime).toISOString()
+            };
+        });
+
+        if (updatedCount > 0) {
+            await syncCore.writeLocalMultiple({
+                [STORAGE_KEYS.problemRecords]: recordsMap
+            }, {
+                autoSync: true,
+                markDirty: true
+            });
+        }
+
+        return {
+            updatedCount,
+            totalCount: Object.keys(recordsMap || {}).length
+        };
+    }
+
+    async function setReviewFsrsSettings(nextReviewFsrsSettings, options = {}) {
+        const normalized = reviewSettings.normalizeReviewFsrsSettings(nextReviewFsrsSettings);
+        await reviewSettings.setReviewFsrsSettings(normalized);
+        const rebuild = options.rebuildSchedules === false
+            ? { updatedCount: 0, totalCount: 0 }
+            : await rebuildReviewSchedulesForCurrentConfig(options);
+        return {
+            settings: normalized,
+            rebuild
+        };
     }
 
     function extractProblemIdentity(url) {
@@ -483,7 +583,7 @@
     }
 
     async function trackProblemAction(options) {
-        const { url, title, actionType, noteContent, rating, site, problemKey, nowTime: inputNowTime } = options || {};
+        const { url, title, actionType, noteContent, rating, site, problemKey, nowTime: inputNowTime, fsrsParams } = options || {};
         let identity = extractProblemIdentity(url);
         if ((!identity || !identity.supported) && site && problemKey) {
             identity = createIdentityFromSiteAndProblemKey(site, problemKey);
@@ -538,7 +638,7 @@
             nextRecord.submissionPassedCount = Number(nextRecord.submissionPassedCount || 0) + 1;
             nextRecord.submissionPassedAt = now;
         } else if (actionType === 'review_rated') {
-            nextRecord.review = buildNextReviewState(nextRecord, rating, nowTime);
+            nextRecord.review = buildNextReviewState(nextRecord, rating, nowTime, fsrsParams);
         }
 
         records[recordId] = nextRecord;
@@ -635,7 +735,8 @@
         const recordsMap = await getProblemRecords();
         const recordId = buildRecordId(identity);
         const baseRecord = recordsMap[recordId] || createEmptyRecord(identity, title, new Date(nowTime).toISOString());
-        return buildReviewRatingPreviewsByRecord(baseRecord, nowTime);
+        const fsrsParams = await getEffectiveReviewFsrsParams();
+        return buildReviewRatingPreviewsByRecord(baseRecord, nowTime, fsrsParams);
     }
 
     async function rateProblemMemory(options) {
@@ -680,12 +781,14 @@
             }
         }
 
+        const fsrsParams = await getEffectiveReviewFsrsParams();
         const result = await trackProblemAction({
             url: identity.url || url,
             title,
             actionType: 'review_rated',
             rating: safeRating,
-            nowTime
+            nowTime,
+            fsrsParams
         });
 
         return {
@@ -820,6 +923,11 @@
         getRecordReviewMeta,
         forgettingCurve,
         buildNextReviewState,
+        getReviewFsrsSettings,
+        setReviewFsrsSettings,
+        getEffectiveReviewFsrsParams,
+        rebuildReviewSchedulesForCurrentConfig,
+        formatReviewDate,
         aggregateRecordsByCanonicalId,
         buildRecordSummary,
         getProblemRecords,

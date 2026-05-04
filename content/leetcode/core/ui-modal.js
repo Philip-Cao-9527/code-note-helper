@@ -1,6 +1,6 @@
 ﻿/**
  * LeetCode 笔记助手 UI 模块
- * 版本：1.1.1
+ * 版本：1.1.3
  */
 
 (function () {
@@ -55,6 +55,17 @@
         if (duration > 0) {
             setTimeout(() => toast.style.display = 'none', duration);
         }
+    }
+
+    function buildReviewSuccessMessage(store, result, fallbackMessage) {
+        const nextReviewAt = result && result.review && result.review.nextReviewAt;
+        const formattedDate = store && typeof store.formatReviewDate === 'function'
+            ? store.formatReviewDate(nextReviewAt)
+            : '';
+        if (!formattedDate) {
+            return fallbackMessage;
+        }
+        return `${fallbackMessage}，下次复习时间为 ${formattedDate}`;
     }
 
     function setGeneratingState(generating) {
@@ -1716,9 +1727,9 @@
                     maybeCelebrateFromActionResult(result);
                     setReviewReminderState(false);
                     if (result.isNewRecord) {
-                        showToast('✅ 已加入力扣题目清单并记录记忆状态', 3000);
+                        showToast(buildReviewSuccessMessage(store, result, '✅ 已加入力扣题目清单并记录记忆状态'), 3200);
                     } else {
-                        showToast('✅ 记忆状态已更新', 2400);
+                        showToast(buildReviewSuccessMessage(store, result, '✅ 记忆状态已更新'), 3200);
                     }
                 } catch (error) {
                     console.warn('[Note Helper] 复习评分失败:', error);

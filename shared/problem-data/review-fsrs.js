@@ -1,6 +1,6 @@
 /**
  * FSRS 复习调度内核（对齐 ts-fsrs@4.7.0）
- * 版本：1.1.0
+ * 版本：1.1.3
  */
 
 (function () {
@@ -114,6 +114,17 @@
             w: weights,
             enable_fuzz: options.enable_fuzz ?? FSRS_DEFAULT_ENABLE_FUZZ,
             enable_short_term: options.enable_short_term ?? FSRS_DEFAULT_ENABLE_SHORT_TERM
+        };
+    }
+
+    function buildFsrsParamsDigest(params) {
+        const safe = params && typeof params === 'object' ? params : fsrsParamsRef;
+        return {
+            request_retention: Number(safe.request_retention || fsrsParamsRef.request_retention),
+            maximum_interval: Number(safe.maximum_interval || fsrsParamsRef.maximum_interval),
+            enable_fuzz: safe.enable_fuzz ?? fsrsParamsRef.enable_fuzz,
+            enable_short_term: safe.enable_short_term ?? fsrsParamsRef.enable_short_term,
+            w: Array.isArray(safe.w) ? safe.w.slice() : fsrsParamsRef.w.slice()
         };
     }
 
@@ -312,6 +323,28 @@
         return Math.max(0, getFsrsDateDiffInDays(new Date(left), new Date(right)));
     }
 
+    function rescheduleExistingFsrsCard(fsrsState, params) {
+        const source = fsrsState && typeof fsrsState === 'object' ? fsrsState : null;
+        if (!source) return null;
+
+        const lastReviewTime = parseFsrsTimestamp(source.lastReview);
+        const stability = Number(source.stability || 0);
+        if (!(lastReviewTime > 0) || !(stability > 0)) {
+            return null;
+        }
+
+        const algorithmParams = params || fsrsParamsRef;
+        const intervalModifier = calculateFsrsIntervalModifier(algorithmParams.request_retention);
+        const scheduledDays = getFsrsNextInterval(algorithmParams, intervalModifier, stability);
+        const due = scheduleByDays(new Date(lastReviewTime), scheduledDays);
+
+        return {
+            nextReview: due.getTime(),
+            nextReviewAt: due.toISOString(),
+            scheduledDays
+        };
+    }
+
     const fsrsParamsRef = buildFsrsParameters({
         request_retention: 0.9,
         maximum_interval: 365,
@@ -322,13 +355,15 @@
     modules.reviewFsrs = {
         FSRS_STATE,
         FSRS_RATING,
+        buildFsrsParameters,
+        buildFsrsParamsDigest,
         fsrsParamsRef,
         parseFsrsTimestamp,
         normalizeFsrsStateValue,
         getFsrsRatingFromMemoryRating,
         calculateElapsedDays,
         forgettingCurve: fsrsForgettingCurve,
-        buildNextFsrsCard
+        buildNextFsrsCard,
+        rescheduleExistingFsrsCard
     };
 })();
-
