@@ -24,8 +24,8 @@
         };
     const REVIEW_FSRS_PRESETS = {
         intensive: {
-            request_retention: 0.97,
-            maximum_interval: 45
+            request_retention: 0.93,
+            maximum_interval: 90
         },
         normal: {
             request_retention: 0.9,
