@@ -259,6 +259,33 @@
         for (let index = 1; index < clamped.length; index += 1) {
             monotonic[index] = Math.min(hardLimit, Math.max(clamped[index], monotonic[index - 1]));
         }
+
+        const hasRepeatedIntervals = new Set(monotonic).size < monotonic.length;
+        const canSpreadByEndpoints = monotonic[3] - monotonic[0] >= 3;
+        if (hasRepeatedIntervals && canSpreadByEndpoints) {
+            const start = monotonic[0];
+            const end = monotonic[3];
+            const step = (end - start) / 3;
+            const balanced = [
+                start,
+                clampIntervalDays(start + step, hardLimit),
+                clampIntervalDays(start + step * 2, hardLimit),
+                end
+            ];
+
+            for (let index = 1; index < balanced.length; index += 1) {
+                balanced[index] = Math.min(end, Math.max(balanced[index], balanced[index - 1] + 1));
+            }
+            balanced[3] = end;
+
+            return {
+                againInterval: balanced[0],
+                hardInterval: balanced[1],
+                goodInterval: balanced[2],
+                easyInterval: balanced[3]
+            };
+        }
+
         return {
             againInterval: monotonic[0],
             hardInterval: monotonic[1],
