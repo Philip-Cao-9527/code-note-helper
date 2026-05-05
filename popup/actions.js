@@ -574,7 +574,7 @@
                         return;
                     }
                     await refreshData();
-                    showToast(buildReviewSuccessMessage(store, result, '记忆状态已更新'), 3200);
+                    showToast(buildReviewSuccessMessage(store, result, '记忆状态已更新'), 5000);
                 } catch (error) {
                     console.error('[Popup] 快捷复习失败：', error);
                     showToast('更新失败，请稍后重试');

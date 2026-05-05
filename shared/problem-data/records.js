@@ -18,7 +18,6 @@
     const LEETCODE_SITES = new Set(['leetcode.cn', 'leetcode.com']);
     const DEEP_LEARNING_SITES = new Set(['deep-ml.com', 'duoan-torchcode.hf.space']);
     const reviewDomain = modules.reviewDomain || {};
-    const reviewFsrs = modules.reviewFsrs || {};
     const reviewSettings = modules.reviewSettings || {};
     const REQUIRED_REVIEW_DOMAIN_FUNCTIONS = [
         'normalizeReviewState',
@@ -39,9 +38,6 @@
     const parseRating = reviewDomain.parseRating;
     const forgettingCurve = reviewDomain.forgettingCurve;
 
-    if (typeof reviewFsrs.rescheduleExistingFsrsCard !== 'function') {
-        throw new Error('FSRS 内核未正确加载：缺少 rescheduleExistingFsrsCard');
-    }
     if (typeof reviewSettings.getEffectiveReviewFsrsParams !== 'function' || typeof reviewSettings.normalizeReviewFsrsSettings !== 'function') {
         throw new Error('复习参数配置模块未正确加载');
     }
@@ -108,79 +104,11 @@
         return reviewSettings.getEffectiveReviewFsrsParams(settings);
     }
 
-    function rebuildStoredReviewStateForParams(record, fsrsParams, nowTime = Date.now()) {
-        if (!record || !isLeetcodeSite(record.site)) return null;
-        const currentReview = normalizeReviewState(record.review, nowTime);
-        if (!currentReview.enabled || !currentReview.fsrsState) {
-            return null;
-        }
-
-        const rebuilt = reviewFsrs.rescheduleExistingFsrsCard(currentReview.fsrsState, fsrsParams);
-        if (!rebuilt || !rebuilt.nextReviewAt) {
-            return null;
-        }
-
-        const nextReviewAt = rebuilt.nextReviewAt;
-        const nextReview = rebuilt.nextReview;
-        const previousNextReviewAt = String(currentReview.nextReviewAt || '');
-        const previousNextReview = Number(currentReview.fsrsState.nextReview || 0);
-        if (previousNextReviewAt === nextReviewAt && previousNextReview === nextReview) {
-            return null;
-        }
-
-        return {
-            ...currentReview,
-            nextReviewAt,
-            fsrsState: {
-                ...currentReview.fsrsState,
-                nextReview
-            }
-        };
-    }
-
-    async function rebuildReviewSchedulesForCurrentConfig(options = {}) {
-        const resolvedNowTime = Number(options.nowTime);
-        const nowTime = Number.isFinite(resolvedNowTime) ? resolvedNowTime : Date.now();
-        const fsrsParams = options.fsrsParams || await getEffectiveReviewFsrsParams();
-        const recordsMap = await getProblemRecords();
-        let updatedCount = 0;
-
-        Object.keys(recordsMap || {}).forEach((recordId) => {
-            const record = recordsMap[recordId];
-            const rebuiltReview = rebuildStoredReviewStateForParams(record, fsrsParams, nowTime);
-            if (!rebuiltReview) return;
-            updatedCount += 1;
-            recordsMap[recordId] = {
-                ...record,
-                review: rebuiltReview,
-                updatedAt: new Date(nowTime).toISOString()
-            };
-        });
-
-        if (updatedCount > 0) {
-            await syncCore.writeLocalMultiple({
-                [STORAGE_KEYS.problemRecords]: recordsMap
-            }, {
-                autoSync: true,
-                markDirty: true
-            });
-        }
-
-        return {
-            updatedCount,
-            totalCount: Object.keys(recordsMap || {}).length
-        };
-    }
-
-    async function setReviewFsrsSettings(nextReviewFsrsSettings, options = {}) {
+    async function setReviewFsrsSettings(nextReviewFsrsSettings) {
         const normalized = reviewSettings.normalizeReviewFsrsSettings(nextReviewFsrsSettings);
-        await reviewSettings.setReviewFsrsSettings(normalized);
-        const rebuild = options.rebuildSchedules === false
-            ? { updatedCount: 0, totalCount: 0 }
-            : await rebuildReviewSchedulesForCurrentConfig(options);
+        const savedSettings = await reviewSettings.setReviewFsrsSettings(normalized);
         return {
-            settings: normalized,
-            rebuild
+            settings: savedSettings
         };
     }
 
@@ -926,7 +854,6 @@
         getReviewFsrsSettings,
         setReviewFsrsSettings,
         getEffectiveReviewFsrsParams,
-        rebuildReviewSchedulesForCurrentConfig,
         formatReviewDate,
         aggregateRecordsByCanonicalId,
         buildRecordSummary,

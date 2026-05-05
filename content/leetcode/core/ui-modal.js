@@ -1727,9 +1727,9 @@
                     maybeCelebrateFromActionResult(result);
                     setReviewReminderState(false);
                     if (result.isNewRecord) {
-                        showToast(buildReviewSuccessMessage(store, result, '✅ 已加入力扣题目清单并记录记忆状态'), 3200);
+                        showToast(buildReviewSuccessMessage(store, result, '✅ 已加入力扣题目清单并记录记忆状态'), 5000);
                     } else {
-                        showToast(buildReviewSuccessMessage(store, result, '✅ 记忆状态已更新'), 3200);
+                        showToast(buildReviewSuccessMessage(store, result, '✅ 记忆状态已更新'), 5000);
                     }
                 } catch (error) {
                     console.warn('[Note Helper] 复习评分失败:', error);

@@ -41,7 +41,6 @@
             getReviewFsrsSettings: records.getReviewFsrsSettings,
             setReviewFsrsSettings: records.setReviewFsrsSettings,
             getEffectiveReviewFsrsParams: records.getEffectiveReviewFsrsParams,
-            rebuildReviewSchedulesForCurrentConfig: records.rebuildReviewSchedulesForCurrentConfig,
             formatReviewDate: records.formatReviewDate,
             deleteProblemRecord: records.deleteProblemRecord,
             saveProblemNote: records.saveProblemNote,

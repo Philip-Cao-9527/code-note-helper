@@ -11,25 +11,24 @@
     const syncCore = modules.syncCore || {};
     const reviewFsrs = modules.reviewFsrs || {};
 
-    const DEFAULT_REVIEW_FSRS_SETTINGS = constants.DEFAULT_SYNC_SETTINGS
-        && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs
-        ? constants.DEFAULT_SYNC_SETTINGS.reviewFsrs
-        : {
-            enabled: false,
-            preset: 'normal',
-            custom: {
-                request_retention: 0.9,
-                maximum_interval: 365
-            }
-        };
+    const DEFAULT_REVIEW_FSRS_SETTINGS = {
+        enabled: false,
+        preset: 'custom',
+        custom: {
+            request_retention: Number(constants.DEFAULT_SYNC_SETTINGS
+                && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs
+                && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs.custom
+                && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs.custom.request_retention) || 0.9,
+            maximum_interval: Math.max(1, Math.floor(Number(constants.DEFAULT_SYNC_SETTINGS
+                && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs
+                && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs.custom
+                && constants.DEFAULT_SYNC_SETTINGS.reviewFsrs.custom.maximum_interval) || 365))
+        }
+    };
     const REVIEW_FSRS_PRESETS = {
         intensive: {
-            request_retention: 0.93,
-            maximum_interval: 90
-        },
-        normal: {
-            request_retention: 0.9,
-            maximum_interval: 365
+            request_retention: 0.97,
+            maximum_interval: 45
         },
         relaxed: {
             request_retention: 0.87,
@@ -51,26 +50,28 @@
 
     function normalizePreset(value) {
         const preset = String(value || '').trim().toLowerCase();
-        if (preset === 'intensive' || preset === 'normal' || preset === 'relaxed' || preset === 'custom') {
+        if (preset === 'intensive' || preset === 'relaxed' || preset === 'custom') {
             return preset;
         }
-        return DEFAULT_REVIEW_FSRS_SETTINGS.preset || 'normal';
+        return DEFAULT_REVIEW_FSRS_SETTINGS.preset || 'custom';
     }
 
     function normalizeReviewFsrsSettings(input) {
         const source = input && typeof input === 'object' ? input : {};
         const defaultCustom = DEFAULT_REVIEW_FSRS_SETTINGS.custom || {};
         const customSource = source.custom && typeof source.custom === 'object' ? source.custom : {};
+        const legacyPreset = String(source.preset || '').trim().toLowerCase();
+        const isLegacyNormalPreset = legacyPreset === 'normal';
         return {
-            enabled: Boolean(source.enabled),
+            enabled: isLegacyNormalPreset ? false : Boolean(source.enabled),
             preset: normalizePreset(source.preset),
             custom: {
                 request_retention: clampRequestRetention(
-                    customSource.request_retention,
+                    isLegacyNormalPreset ? defaultCustom.request_retention : customSource.request_retention,
                     defaultCustom.request_retention || 0.9
                 ),
                 maximum_interval: clampMaximumInterval(
-                    customSource.maximum_interval,
+                    isLegacyNormalPreset ? defaultCustom.maximum_interval : customSource.maximum_interval,
                     defaultCustom.maximum_interval || 365
                 )
             }
@@ -95,7 +96,7 @@
             };
         }
         return {
-            ...(REVIEW_FSRS_PRESETS[normalized.preset] || REVIEW_FSRS_PRESETS.normal)
+            ...(REVIEW_FSRS_PRESETS[normalized.preset] || normalized.custom)
         };
     }
 
@@ -161,7 +162,7 @@
     }
 
     modules.reviewSettings = {
-        DEFAULT_REVIEW_FSRS_SETTINGS: normalizeReviewFsrsSettings(DEFAULT_REVIEW_FSRS_SETTINGS),
+        DEFAULT_REVIEW_FSRS_SETTINGS,
         REVIEW_FSRS_PRESETS,
         normalizeReviewFsrsSettings,
         extractReviewFsrsSettings,

@@ -30,10 +30,18 @@
         : new Set();
     modules.providers = modules.providers || {};
 
+    function normalizeReviewFsrsPreset(value) {
+        const preset = String(value || '').trim().toLowerCase();
+        if (preset === 'intensive' || preset === 'relaxed' || preset === 'custom') {
+            return preset;
+        }
+        return 'custom';
+    }
+
     function normalizeSyncSettings(settings) {
         const reviewFsrsDefault = helpers.cloneValue(DEFAULT_SYNC_SETTINGS.reviewFsrs || {
             enabled: false,
-            preset: 'normal',
+            preset: 'custom',
             custom: {
                 request_retention: 0.9,
                 maximum_interval: 365
@@ -51,17 +59,23 @@
                 ...((((settings || {}).reviewFsrs || {}).custom) || {})
             }
         };
+        const legacyNormalPreset = String(reviewFsrs.preset || '').trim().toLowerCase() === 'normal';
+        const normalizedReviewFsrsCustom = {
+            request_retention: Number(legacyNormalPreset
+                ? reviewFsrsDefault.custom.request_retention
+                : (reviewFsrs.custom && reviewFsrs.custom.request_retention) || reviewFsrsDefault.custom.request_retention || 0.9),
+            maximum_interval: Math.max(1, Math.floor(Number(legacyNormalPreset
+                ? reviewFsrsDefault.custom.maximum_interval
+                : (reviewFsrs.custom && reviewFsrs.custom.maximum_interval) || reviewFsrsDefault.custom.maximum_interval || 365)))
+        };
 
         return {
             ...helpers.cloneValue(DEFAULT_SYNC_SETTINGS),
             ...(settings || {}),
             reviewFsrs: {
-                enabled: Boolean(reviewFsrs.enabled),
-                preset: String(reviewFsrs.preset || reviewFsrsDefault.preset || 'normal').trim().toLowerCase() || 'normal',
-                custom: {
-                    request_retention: Number(reviewFsrs.custom && reviewFsrs.custom.request_retention || reviewFsrsDefault.custom.request_retention || 0.9),
-                    maximum_interval: Math.max(1, Math.floor(Number(reviewFsrs.custom && reviewFsrs.custom.maximum_interval || reviewFsrsDefault.custom.maximum_interval || 365)))
-                }
+                enabled: legacyNormalPreset ? false : Boolean(reviewFsrs.enabled),
+                preset: normalizeReviewFsrsPreset(reviewFsrs.preset || reviewFsrsDefault.preset || 'custom'),
+                custom: normalizedReviewFsrsCustom
             },
             webdav: {
                 ...webdav,

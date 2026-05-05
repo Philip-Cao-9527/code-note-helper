@@ -208,6 +208,65 @@
         return new Date(baseDate.getTime() + days * DAY_MS);
     }
 
+    function clampIntervalDays(value, maximumInterval) {
+        const hardLimit = Math.max(1, Math.floor(Number(maximumInterval || 1)));
+        const rounded = Math.round(Number(value || 0));
+        if (!Number.isFinite(rounded)) return 1;
+        return Math.min(hardLimit, Math.max(1, rounded));
+    }
+
+    function buildBalancedIntervals(againInterval, hardInterval, goodInterval, easyInterval, maximumInterval) {
+        const hardLimit = Math.max(1, Math.floor(Number(maximumInterval || 1)));
+        const clamped = [
+            clampIntervalDays(againInterval, hardLimit),
+            clampIntervalDays(hardInterval, hardLimit),
+            clampIntervalDays(goodInterval, hardLimit),
+            clampIntervalDays(easyInterval, hardLimit)
+        ];
+        const touchedTopCount = clamped.slice(1).filter((value) => value >= hardLimit).length;
+
+        if (touchedTopCount >= 2) {
+            const start = clamped[0];
+            if (start >= hardLimit) {
+                return {
+                    againInterval: hardLimit,
+                    hardInterval: hardLimit,
+                    goodInterval: hardLimit,
+                    easyInterval: hardLimit
+                };
+            }
+
+            const step = (hardLimit - start) / 3;
+            const balanced = [
+                start,
+                clampIntervalDays(start + step, hardLimit),
+                clampIntervalDays(start + step * 2, hardLimit),
+                hardLimit
+            ];
+            for (let index = 1; index < balanced.length; index += 1) {
+                balanced[index] = Math.min(hardLimit, Math.max(balanced[index], balanced[index - 1]));
+            }
+            balanced[3] = hardLimit;
+            return {
+                againInterval: balanced[0],
+                hardInterval: balanced[1],
+                goodInterval: balanced[2],
+                easyInterval: balanced[3]
+            };
+        }
+
+        const monotonic = [clamped[0]];
+        for (let index = 1; index < clamped.length; index += 1) {
+            monotonic[index] = Math.min(hardLimit, Math.max(clamped[index], monotonic[index - 1]));
+        }
+        return {
+            againInterval: monotonic[0],
+            hardInterval: monotonic[1],
+            goodInterval: monotonic[2],
+            easyInterval: monotonic[3]
+        };
+    }
+
     function normalizeFsrsStateValue(input) {
         const number = Number(input);
         if (!Number.isInteger(number)) return FSRS_STATE.New;
@@ -285,10 +344,18 @@
         let goodInterval = getFsrsNextInterval(algorithmParams, intervalModifier, cards.good.stability);
         let easyInterval = getFsrsNextInterval(algorithmParams, intervalModifier, cards.easy.stability);
 
-        againInterval = Math.min(againInterval, hardInterval);
-        hardInterval = Math.max(hardInterval, againInterval + 1);
-        goodInterval = Math.max(goodInterval, hardInterval + 1);
-        easyInterval = Math.max(easyInterval, goodInterval + 1);
+        ({
+            againInterval,
+            hardInterval,
+            goodInterval,
+            easyInterval
+        } = buildBalancedIntervals(
+            againInterval,
+            hardInterval,
+            goodInterval,
+            easyInterval,
+            algorithmParams.maximum_interval
+        ));
 
         cards.again.scheduled_days = againInterval;
         cards.again.due = scheduleByDays(nowDate, againInterval);
@@ -323,28 +390,6 @@
         return Math.max(0, getFsrsDateDiffInDays(new Date(left), new Date(right)));
     }
 
-    function rescheduleExistingFsrsCard(fsrsState, params) {
-        const source = fsrsState && typeof fsrsState === 'object' ? fsrsState : null;
-        if (!source) return null;
-
-        const lastReviewTime = parseFsrsTimestamp(source.lastReview);
-        const stability = Number(source.stability || 0);
-        if (!(lastReviewTime > 0) || !(stability > 0)) {
-            return null;
-        }
-
-        const algorithmParams = params || fsrsParamsRef;
-        const intervalModifier = calculateFsrsIntervalModifier(algorithmParams.request_retention);
-        const scheduledDays = getFsrsNextInterval(algorithmParams, intervalModifier, stability);
-        const due = scheduleByDays(new Date(lastReviewTime), scheduledDays);
-
-        return {
-            nextReview: due.getTime(),
-            nextReviewAt: due.toISOString(),
-            scheduledDays
-        };
-    }
-
     const fsrsParamsRef = buildFsrsParameters({
         request_retention: 0.9,
         maximum_interval: 365,
@@ -363,7 +408,6 @@
         getFsrsRatingFromMemoryRating,
         calculateElapsedDays,
         forgettingCurve: fsrsForgettingCurve,
-        buildNextFsrsCard,
-        rescheduleExistingFsrsCard
+        buildNextFsrsCard
     };
 })();

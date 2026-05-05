@@ -72,7 +72,7 @@
         DEFAULT_SYNC_SETTINGS: {
             reviewFsrs: {
                 enabled: false,
-                preset: 'normal',
+                preset: 'custom',
                 custom: {
                     request_retention: 0.9,
                     maximum_interval: 365

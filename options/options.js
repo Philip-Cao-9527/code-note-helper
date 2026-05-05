@@ -198,11 +198,11 @@
 
         function getSelectedReviewFsrsPreset() {
             const selected = elements.reviewFsrsPresetOptions.find((input) => input.checked);
-            return selected ? selected.value : 'normal';
+            return selected ? selected.value : 'custom';
         }
 
         function setSelectedReviewFsrsPreset(value) {
-            const preset = String(value || 'normal').trim().toLowerCase();
+            const preset = String(value || 'custom').trim().toLowerCase();
             elements.reviewFsrsPresetOptions.forEach((input) => {
                 input.checked = input.value === preset;
             });
@@ -227,7 +227,7 @@
                 ? reviewSettingsModule.DEFAULT_REVIEW_FSRS_SETTINGS
                 : {
                     enabled: false,
-                    preset: 'normal',
+                    preset: 'custom',
                     custom: {
                         request_retention: 0.9,
                         maximum_interval: 365
@@ -316,7 +316,7 @@
                 ? reviewSettingsModule.extractReviewFsrsSettings(settings)
                 : (settings.reviewFsrs || {
                     enabled: false,
-                    preset: 'normal',
+                    preset: 'custom',
                     custom: {
                         request_retention: 0.9,
                         maximum_interval: 365
@@ -325,7 +325,7 @@
             if (elements.reviewFsrsToggle) {
                 elements.reviewFsrsToggle.checked = Boolean(reviewFsrsSettings.enabled);
             }
-            setSelectedReviewFsrsPreset(reviewFsrsSettings.preset || 'normal');
+            setSelectedReviewFsrsPreset(reviewFsrsSettings.preset || 'custom');
             if (elements.reviewFsrsRequestRetention) {
                 elements.reviewFsrsRequestRetention.value = String(reviewFsrsSettings.custom.request_retention || 0.9);
             }
@@ -368,13 +368,8 @@
                 }
             };
             await store.setSyncSettings(nextSettings);
-            const currentReviewFsrs = reviewSettingsModule && typeof reviewSettingsModule.extractReviewFsrsSettings === 'function'
-                ? reviewSettingsModule.extractReviewFsrsSettings(current || {})
-                : (current.reviewFsrs || null);
-            const reviewFsrsChanged = JSON.stringify(currentReviewFsrs) !== JSON.stringify(normalizedReviewFsrs);
             return {
-                nextSettings,
-                reviewFsrsChanged
+                nextSettings
             };
         }
 
@@ -467,10 +462,7 @@
         elements.btnSaveSync.addEventListener('click', async () => {
             try {
                 setBusy(elements.btnSaveSync, true);
-                const saveResult = await saveSyncSettings();
-                if (saveResult.reviewFsrsChanged && typeof store.rebuildReviewSchedulesForCurrentConfig === 'function') {
-                    await store.rebuildReviewSchedulesForCurrentConfig();
-                }
+                await saveSyncSettings();
                 await loadSyncSection();
                 clearSyncDirty();
                 showToast('同步设置已保存');
