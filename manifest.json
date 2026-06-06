@@ -1,4 +1,4 @@
-﻿{
+{
   "manifest_version": 3,
   "name": "CodeNote Helper",
   "version": "1.1.3",
@@ -39,12 +39,6 @@
   "optional_permissions": [
     "identity"
   ],
-  "oauth2": {
-    "client_id": "REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/drive.file"
-    ]
-  },
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"
