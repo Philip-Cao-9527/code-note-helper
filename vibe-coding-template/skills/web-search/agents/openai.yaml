@@ -1,0 +1,4 @@
+interface:
+  display_name: "联网检索助手"
+  short_description: "检索官方文档、论文、仓库和最新工程依据"
+  default_prompt: "使用 $web-search 为当前问题检索外部依据，并区分已确认事实、工程推断和仍需验证的边界。"

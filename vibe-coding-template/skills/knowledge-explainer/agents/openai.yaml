@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识讲解助手"
+  short_description: "生成可口述、可复习、从零讲透的技术解释"
+  default_prompt: "使用 $knowledge-explainer 讲解当前技术问题，先给可直接口述版，再给从零开始的详细原理讲解和项目追问回答。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeNote Plan Mode Prompt"
+  short_description: "生成要求先只读探索和关键决策的 CodeNote Plan mode prompt"
+  default_prompt: "使用 $codenote-plan-mode-prompt 生成一份 CodeNote Helper Plan mode 任务 prompt。"

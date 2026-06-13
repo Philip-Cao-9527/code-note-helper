@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeNote Code Review Prompt"
+  short_description: "生成 CodeNote Helper findings first 审查任务 prompt"
+  default_prompt: "使用 $codenote-code-review-prompt 生成一份 CodeNote Helper code review 任务 prompt。"

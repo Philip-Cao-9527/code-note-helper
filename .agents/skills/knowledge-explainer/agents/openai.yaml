@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeNote 知识讲解"
+  short_description: "把 CodeNote 技术原理和项目实现讲成可复述表达"
+  default_prompt: "使用 $knowledge-explainer 讲解当前 CodeNote Helper 技术问题，必要时先调用 $web-search 核对外部事实。"

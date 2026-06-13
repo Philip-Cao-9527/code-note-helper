@@ -9,7 +9,13 @@ description: 在项目 AGENTS.md 约束下生成可直接交给 Codex 或 Agent 
 
 生成一次具体任务的执行 prompt。它的唯一主产物是一份能复制给 Codex/Agent 立刻执行的中文 prompt，不是建议清单、教程、变量表，也不是直接开始执行 prompt 中的任务。
 
-计划优先任务交给 `plan-mode-planner`，代码审查任务交给 `code-reviewer`，创建项目本地 skill 交给 `project-skill-creator`。只有用户明确要求合并多个模式时，才在最终 prompt 中引用对应原则。
+计划优先任务交给 `$plan-mode-planner`，代码审查任务交给 `$code-reviewer`，创建项目本地 skill 交给 `$project-skill-creator`。只有用户明确要求合并多个模式时，才在最终 prompt 中引用对应原则。
+
+如果一次开发、修复、文档或方案 prompt 的执行依赖外部最新知识、官方 API、库版本、论文、benchmark、标准、许可证或技术选型依据，最终 prompt 应明确要求后续执行者先调用 `$web-search`，再把外部结论转成工程约束和验证要求。不要把未检索的外部事实写成已确认结论。
+
+## Skill 交叉引用规则
+
+如果生成的 prompt 需要明确要求后续执行者调用其他 skill，必须使用 `$skill-name` 形式引用，例如 `$plan-mode-planner`。不要只写反引号包裹的 skill 名称，也不要写成普通文件名或自然语言描述。
 
 ## 使用流程
 
@@ -21,7 +27,14 @@ description: 在项目 AGENTS.md 约束下生成可直接交给 Codex 或 Agent 
    - 必读文件、参考材料、真实调用链线索。
    - 必做 TODO、测试验证、交付物和报告要求。
 4. 读取 `references/prompt-template.md`，按本轮任务删减和填充。
-5. 输出一个完整、连续、可复制、可执行的中文 prompt。
+5. 输出前将生成的 prompt 保存为临时草稿或在内存中逐项核对，并运行专项校验脚本检查关键执行约束：
+
+```powershell
+python -X utf8 vibe-coding-template/skills/project-prompt-creator/scripts/validate_project_prompt.py path/to/generated-prompt.md
+```
+
+脚本失败时，必须按缺失项继续补齐 prompt 并复跑。该脚本只检查关键结构和质量约束是否保留，不判断任务内容是否已经完全覆盖用户意图。
+6. 输出一个完整、连续、可复制、可执行的中文 prompt。
 
 ## 默认补全规则
 
@@ -33,6 +46,7 @@ description: 在项目 AGENTS.md 约束下生成可直接交给 Codex 或 Agent 
 - 不要生硬照搬其他项目的模块名、测试命令、版本号、专项风险规则、评测口径或发布流程。
 - 涉及 `{{风险域}}` 中的真实服务、用户数据、权限、外部系统、人工步骤或生产环境时，必须要求执行者写清验证边界和不可验证项。
 - 不新增没有依据的保护逻辑；保护逻辑包括但不限于中断条件、容量边界、输入输出限制、重试 / 轮询策略、降级 / 回退策略、异常捕获策略和默认值策略。错误处理必须显式暴露问题，不能吞异常或伪造成功。
+- 必须明确禁止无依据固定超时、长度截断、条数上限、重试上限、静默降级和隐藏兜底；这些不是“默认稳健性”，只有存在用户要求、平台限制、项目既有约定或真实故障证据时才能写入 prompt。
 
 ## Prompt 固定结构
 
@@ -73,7 +87,9 @@ description: 在项目 AGENTS.md 约束下生成可直接交给 Codex 或 Agent 
 1. 是否明确本轮只是生成 prompt，不是已经执行任务。
 2. 是否读取并遵守项目 `AGENTS.md`。
 3. 是否没有把 Plan mode 或 code review 的完整规则复制进本 skill。
-4. 是否没有把旧项目私有路径、测试命令、版本号或专项风险规则写成通用要求。
-5. 是否没有把未验证事实写成已验证。
-6. 是否避免加入无依据的保护逻辑，并要求执行者说明依据、影响、可观测性、验证方式和后续调整方式。
-7. 是否最终只交付一个 Markdown 文本块。
+4. 如果 prompt 中交叉引用其他 skill，是否统一使用 `$skill-name` 形式。
+5. 是否没有把旧项目私有路径、测试命令、版本号或专项风险规则写成通用要求。
+6. 是否没有把未验证事实写成已验证。
+7. 是否避免加入无依据的保护逻辑，并要求执行者说明依据、影响、可观测性、验证方式和后续调整方式。
+8. 是否已运行 `validate_project_prompt.py` 或对同等规则逐项校验，并根据失败项循环修改到通过。
+9. 是否最终只交付一个 Markdown 文本块。

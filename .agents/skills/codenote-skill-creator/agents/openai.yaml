@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeNote Skill Creator"
+  short_description: "创建或更新 CodeNote Helper 项目本地 skills"
+  default_prompt: "使用 $codenote-skill-creator 创建或更新 CodeNote Helper 本地 skill。"

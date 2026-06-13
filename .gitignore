@@ -25,6 +25,10 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# Python cache
+__pycache__/
+*.py[cod]
+
 # Temporary files
 *.tmp
 *.temp

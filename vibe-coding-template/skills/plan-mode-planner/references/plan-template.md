@@ -90,5 +90,6 @@
 ## 使用提醒
 
 - 如果用户已经明确所有关键方向，可以让 Plan mode prompt 要求执行者快速确认事实后直接给计划，但仍不能跳过计划阶段。
-- 如果任务只是普通执行 prompt，不需要用户拍板，改用 `project-prompt-creator`。
-- 如果任务是 code review，改用 `code-reviewer`。
+- 如果任务只是普通执行 prompt，不需要用户拍板，改用 `$project-prompt-creator`。
+- 如果任务是 code review，改用 `$code-reviewer`。
+- 如果最终 prompt 需要交叉引用其他 skill，必须采用 `$skill-name` 形式，不要只写反引号包裹的 skill 名称。

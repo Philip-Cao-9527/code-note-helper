@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeNote 联网检索"
+  short_description: "为 CodeNote 外部平台、API、OAuth 和审核风险建立证据链"
+  default_prompt: "使用 $web-search 为当前 CodeNote Helper 问题检索外部依据，并区分已确认事实、工程推断和仍需真实环境验证的边界。"

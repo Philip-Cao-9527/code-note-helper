@@ -23,6 +23,10 @@ description: 生成要求 Codex 使用 Plan mode 的中文任务 prompt。用于
    - 用户选择后的实现验证要求和交付物顺序。
 4. 输出一个完整、连续、可复制的 Plan mode prompt。
 
+## Skill 交叉引用规则
+
+如果生成的 Plan mode prompt 需要指向其他 skill，必须使用 `$skill-name` 形式引用，例如 `$project-prompt-creator` 或 `$code-reviewer`。不要只写反引号包裹的 skill 名称，也不要把 skill 名称写成普通说明。
+
 ## Plan mode prompt 核心规则
 
 最终 prompt 必须要求执行者：
@@ -60,4 +64,5 @@ description: 生成要求 Codex 使用 Plan mode 的中文任务 prompt。用于
 3. 是否禁止跳过计划阶段直接实现。
 4. 是否把用户决策控制在 2 到 4 个关键点。
 5. 是否没有替用户拍板，也没有把琐碎实现细节包装成决策点。
-6. 是否包含实现后验证要求和交付物顺序。
+6. 如果 prompt 中交叉引用其他 skill，是否统一使用 `$skill-name` 形式。
+7. 是否包含实现后验证要求和交付物顺序。
