@@ -1,0 +1,4 @@
+interface:
+  display_name: "代码审查器"
+  short_description: "按风险优先审查代码、文档和配置改动"
+  default_prompt: "使用 $code-reviewer 审查当前改动，优先列出 bug、回归风险和缺失测试。"

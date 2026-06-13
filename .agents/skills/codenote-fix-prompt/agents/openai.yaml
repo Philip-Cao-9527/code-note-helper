@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeNote Prompt Builder"
+  short_description: "为 CodeNote Helper 生成修复、审计与审核任务 prompt"
+  default_prompt: "Use $codenote-fix-prompt to generate a CodeNote Helper repair or audit prompt."

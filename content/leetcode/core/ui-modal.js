@@ -1745,7 +1745,7 @@ ${content}`;
             <select id="p-recommendation-select"></select>
             <div id="p-custom-recommendation-wrap" style="display:none;margin-top:8px;">
                 <label for="p-custom-recommendation-requirement" style="font-size:13px;color:#475569;margin-bottom:4px;">自定义要求</label>
-                <input type="text" id="p-custom-recommendation-requirement" placeholder="例如：只参考灵神题解里的贪心 + 二分查找写法" disabled>
+                <textarea id="p-custom-recommendation-requirement" rows="2" placeholder="例如：只参考灵神题解里的贪心 + 二分查找写法" disabled></textarea>
             </div>
             <div id="p-recommendation-hint" style="font-size:12px;color:#666;margin-top:4px"></div>
         </div>

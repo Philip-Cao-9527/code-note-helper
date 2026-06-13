@@ -1,0 +1,4 @@
+interface:
+  display_name: "项目 Prompt 生成器"
+  short_description: "按项目 AGENTS 生成可执行任务 prompt"
+  default_prompt: "使用 $project-prompt-creator 为当前项目任务生成一份可直接执行的中文 prompt。"

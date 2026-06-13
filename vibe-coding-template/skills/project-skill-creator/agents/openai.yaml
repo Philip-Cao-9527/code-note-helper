@@ -1,0 +1,4 @@
+interface:
+  display_name: "项目 Skill 生成器"
+  short_description: "把高频项目流程沉淀成本地 skill"
+  default_prompt: "使用 $project-skill-creator 为当前项目创建一个本地 skill。"

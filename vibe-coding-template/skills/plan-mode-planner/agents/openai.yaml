@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Mode 计划器"
+  short_description: "先只读探索再生成决策完整的计划"
+  default_prompt: "使用 $plan-mode-planner 为当前任务先生成一份决策完整的执行计划。"
