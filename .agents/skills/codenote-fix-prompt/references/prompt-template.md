@@ -93,3 +93,5 @@ B. <事项 B 标题，可删除>
 - 需要生成审查任务 prompt 时，改用 `$codenote-code-review-prompt`。
 - 需要创建或更新本地 skill 时，改用 `$codenote-skill-creator`。
 - 如果最终 prompt 需要交叉引用其他 skill，必须采用 `$skill-name` 形式，不要只写反引号包裹的 skill 名称。
+- 最终 prompt 必须整体放入一个 Markdown 文本块；如果内部包含三反引号，外层使用四反引号或更长围栏，避免复制时被截断。
+- 生成或改写 prompt 后，可运行 `python -X utf8 .agents/skills/codenote-fix-prompt/scripts/validate_codenote_fix_prompt.py path/to/generated-prompt.md` 检查硬性结构和关键质量规则；失败时按缺失项继续修改并复跑。

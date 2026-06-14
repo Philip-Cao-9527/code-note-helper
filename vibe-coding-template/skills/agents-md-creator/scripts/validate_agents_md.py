@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +33,28 @@ def read_utf8(path: Path) -> str:
 
 
 def validate_rules(text: str) -> list[str]:
+    progress_block_needles = (
+        "在执行命令、读写文件、测试页面、查看日志时，使用简洁中文进度块：",
+        "> 🧩 步骤：{一句话描述正在做什么}",
+        "> 🎯 目的：{为什么要做}",
+        "> ▶️ 执行：{命令、页面、文件路径或操作}",
+        "> ✅ 结果：{当前状态}",
+        "> 🧾 证据：{可验证证据路径}",
+        "> 📝 备注：{可选，最多一句}",
+    )
+    report_content_needles = (
+        "报告至少覆盖：",
+        "1. 本轮问题 / 目标与范围。",
+        "2. 改动文件清单。",
+        "3. 关键修复内容。",
+        "4. 验收方式 / 手测步骤 / 自动化测试情况。",
+        "5. 版本同步清单。",
+        "6. 风险与备注。",
+        "7. 结论。",
+    )
+    naming_rule_needles = (
+        "新增文件、目录、测试和报告命名要体现职责与场景，避免只有时间戳、缩写或模糊命名。",
+    )
     rules = [
         Rule("缺少执行环境前置规则。", needles=("执行环境前置规则", "操作系统", "shell")),
         Rule("缺少跨平台命令语法提醒。", needles=("Windows PowerShell", "Linux Bash", "macOS")),
@@ -43,10 +64,12 @@ def validate_rules(text: str) -> list[str]:
         Rule("缺少真实仓库结构 / 调用链 / 测试入口依据要求。", needles=("真实仓库结构", "真实调用链", "真实测试入口")),
         Rule("缺少禁止空壳和不可验证约束。", needles=("堆空壳", "不可验证约束")),
         Rule("缺少超长单文件代码约束。", needles=("超长单文件", "职责边界")),
+        Rule("缺少新增文件 / 目录 / 测试 / 报告命名规则。", needles=naming_rule_needles),
         Rule("缺少修改前必读规则。", needles=("修改前必读", "README")),
         Rule("缺少修复报告规则。", needles=("修复报告规则", "报告目录")),
         Rule("缺少报告触发 / 不触发边界。", needles=("纯文档", "默认不触发修复报告", "用户明确要求")),
         Rule("缺少报告命名占位符规则。", needles=("{{报告目录}}", "{{版本号}}", "{{日期}}")),
+        Rule("缺少完整修复报告内容清单。", needles=report_content_needles),
         Rule("缺少 Markdown 相对路径证据链接规则。", needles=("Markdown 相对路径", "具体文件名")),
         Rule("缺少版本号演进规则。", needles=("版本号演进规则", "{{当前版本}}", "{{版本文件}}", "{{README版本位置}}")),
         Rule("缺少 PATCH / MINOR / MAJOR 说明。", needles=("PATCH", "MINOR", "MAJOR")),
@@ -57,7 +80,8 @@ def validate_rules(text: str) -> list[str]:
         Rule("缺少测试与验证规则。", needles=("测试与验证", "未验证")),
         Rule("缺少输出与验收格式。", needles=("输出与验收格式", "文件改动清单", "版本同步清单", "最终结论")),
         Rule("缺少 docs 修复报告路径要求。", needles=("修复报告路径",)),
-        Rule("缺少进度播报格式。", needles=("进度播报格式", "步骤", "目的", "执行", "结果", "证据")),
+        Rule("缺少进度播报格式。", needles=("进度播报格式", "步骤", "目的", "执行", "结果", "证据", "备注")),
+        Rule("缺少完整进度播报触发场景与 6 行格式。", needles=progress_block_needles),
         Rule("缺少不回滚用户改动规则。", needles=("不要回滚用户已有改动",)),
         Rule("缺少项目专项约束条件启用规则。", needles=("项目专项", "适用条件")),
     ]

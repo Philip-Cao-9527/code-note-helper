@@ -1,81 +1,35 @@
-# vibe-coding-template
+<div align="center">
 
-把一个新项目带进稳定协作状态，最难的往往不是写第一段代码，而是把规则、边界、证据和交付习惯说清楚。`vibe-coding-template` 提供一组本地 skill 模板，用来快速搭起这套项目工作流：项目规则怎么写、一次任务 prompt 怎么组织、什么时候先让 Codex 进入 Plan mode、怎么发起 code review、什么时候把流程沉淀成新的项目 skill，以及什么时候需要联网取证或先补齐技术原理。
+# Vibe Coding Template
+
+**Agent协作模板 · 本地 Skill · 结构校验**
+
+`vibe-coding-template` 是一套可以复制到新项目里的本地 Skill 模板。
+它帮助你把项目规则、任务边界、审查流程、外部依据和知识讲解整理成可复用的协作资产。
+适合长期使用 Codex 或其他 Agent 辅助开发的个人项目与开源项目。
+
+</div>
+
+---
+
+## 使用 Agent 写项目时，真正麻烦的地方
+
+让 Agent 写出第一段代码通常不难，真正的难点在于如何跟 Agent 长期协作。
+
+你可能会遇到这些情况：
+
+* 换一个仓库，又要**重新**告诉 Agent 内容质量要求、测试方式和交付格式。
+* 想让 Agent 做 code review，却很难让它真正围绕当前 diff、项目规则和潜在风险找问题。
+* 想把一个高频流程沉淀下来，最后写出的 prompt 只能**应付当下任务**，下一次仍然要重新写 prompt。
+* 遇到不熟悉的技术点时，往往需要先**补齐背景知识**，把核心原理、关键术语和项目落点讲清楚，否则后续项目开发或准备面试都会停留在表面。
+* 任务依赖最新官方文档、论文、API 或 benchmark，Agent 却凭旧知识给出**看似确定实则风险很高**的结论。
+
+`vibe-coding-template` 处理的就是这些协作问题。它不绑定具体业务，也不替项目规定唯一开发方式。你可以把它当成一套可调整的协作模板，按目标项目的真实内容落地。
+
+这套模板不是凭空设计出来的，而是我在多个项目里反复使用 Agent、反复踩坑之后总结出来的。这里面既包括当前的浏览器拓展项目 [CodeNote Helper 的项目级 skills](https://github.com/Philip-Cao-9527/code-note-helper/tree/main/.agents/skills)，也包括我目前在开发的面向复制表格任务的Agent 工作流和 benchmark 评测的 [TableCodeAgent 项目级 skills](https://github.com/Philip-Cao-9527/TableCodeAgent/tree/main/.agents/skills)。它的重点不是把某个项目的规则原样复制出去，而是把这些项目里反复出现的问题提炼成可以迁移的协作模板。
 
 
-
-## 适合什么时候用
-
-- 初始化新项目时，需要生成或整理项目级 `AGENTS.md`。
-- 某类任务反复出现，值得沉淀成项目本地 skill。
-- 想把一段需求整理成可直接交给 Codex/Agent 执行的 prompt。
-- 任务存在方向选择，需要先让 Codex 进入 Plan mode，读仓库后再提炼关键决策。
-- 想发起一次代码审查，但不希望审查 prompt 变成实现任务。
-- 代码生成、技术选型、方案设计或技术解释依赖最新外部依据。
-- 用户缺少领域背景，需要先把技术原理、八股表达或项目追问讲透。
-
-## 七个内置 skill
-
-| skill | 用途 |
-| --- | --- |
-| `$agents-md-creator` | 生成或更新项目级 `AGENTS.md`，沉淀长期生效的语言、编码、测试、版本、报告、风险和交付规则。 |
-| `$project-skill-creator` | 创建项目本地 skill，把高频、稳定、可复用的协作流程变成长期工具。 |
-| `$project-prompt-creator` | 在项目约束下生成一次具体任务的可执行 prompt，适合开发、修复、文档、验证、治理和交接任务。 |
-| `$plan-mode-planner` | 生成要求 Codex 先使用 Plan mode 的 prompt，用于先读仓库、提炼关键决策、用户拍板后再执行的任务。 |
-| `$code-reviewer` | 生成 code review prompt，默认只要求审查报告和建议，不直接修改代码。 |
-| `$web-search` | 为联网检索、官方文档、论文、仓库、标准、数据集、benchmark、release notes、技术选型和最新工程实践提供可追溯外部依据。 |
-| `$knowledge-explainer` | 生成技术原理、八股讲解、从零教学、面试口述和项目追问回答；涉及最新外部依据时应先调用 `$web-search`。 |
-
-## skill 边界
-
-- `$project-prompt-creator` 负责把一次具体任务组织成可执行 prompt；如果 prompt 的后续执行依赖外部最新知识，应在 prompt 中要求执行者调用 `$web-search`。
-- `$plan-mode-planner` 负责先决策后执行的 prompt，不替用户拍板，也不承担长篇原理教学。
-- `$code-reviewer` 负责生成审查 prompt，默认只要求报告和建议，不直接修复。
-- `$project-skill-creator` 负责创建新的项目本地 skill；如果要创建检索类或领域讲解类 skill，可以参考 `$web-search` 和 `$knowledge-explainer` 的结构。
-- `$web-search` 只负责外部依据检索、来源分层和工程落点，不负责长篇教学；需要讲透概念时交给 `$knowledge-explainer`。
-- `$knowledge-explainer` 负责讲解、口述和项目追问，不直接修改代码；涉及最新论文、官方文档、benchmark、争议结论或现代 API 时，先调用 `$web-search`。
-- `$knowledge-explainer` 属于强约束模板。开源用户用 `$project-skill-creator` 生成自己项目的讲解类 skill 后，应运行 `python -X utf8 vibe-coding-template/skills/project-skill-creator/scripts/validate_knowledge_explainer.py path/to/knowledge-explainer/SKILL.md`，确认最高约束、字数门槛、输出结构、质量门槛和自检项没有被削弱。README 只保留入口说明，完整规则以 `$knowledge-explainer` 和 `$project-skill-creator` 为准。
-
-## knowledge-explainer 如何避免生成跑偏
-
-`$knowledge-explainer` 和普通 skill 模板不一样，它不是只给一个松散写作风格，而是带有强质量门槛的讲解类模板。它要解决的问题是：后续用 `$project-skill-creator` 生成项目自己的讲解类 skill 时，Agent 可能为了“模板化”或“简化”把最关键的规则删掉，比如 1000 / 3000 字硬门槛、未达字数视为输出失败、固定输出结构、公式解释、案例、比喻、记忆抓手、自检项和未实现能力边界。
-
-为避免这种跑偏，模板包用四层机制约束：
-
-1. 源模板保留承重规则：[skills/knowledge-explainer/SKILL.md](skills/knowledge-explainer/SKILL.md) 明确写入 `## 最高约束`、`可直接口述回答（快速复习总结，>=1000字）`、`详细原理讲解（通俗版，>=3000字，含公式）`、`## 质量门槛`、`## 自检` 和“不能把未实现能力说成已经完成”的边界。后续项目可以改项目背景，但不应该削弱这些讲解质量规则。
-2. 生成器先读源模板：[skills/project-skill-creator/SKILL.md](skills/project-skill-creator/SKILL.md) 要求创建或改写讲解类 skill 时必须先读取 `$knowledge-explainer` 源模板，并明确不得削弱最高约束、字数门槛、输出失败规则、输出结构、质量门槛和自检项。
-3. 参考模板传递规则：[skills/project-skill-creator/references/skill-template.md](skills/project-skill-creator/references/skill-template.md) 单独提供“讲解类 skill 专项校验”段落。这样开源用户先用 `$project-skill-creator` 生成自己的项目级 skill creator，再由那个 skill creator 继续生成项目内讲解类 skill 时，也能继续携带这条规则。
-4. 脚本硬失败兜底：[skills/project-skill-creator/scripts/validate_knowledge_explainer.py](skills/project-skill-creator/scripts/validate_knowledge_explainer.py) 会检查目标 `SKILL.md` 是否保留 frontmatter、最高约束、1000 / 3000 字硬门槛、输出失败规则、输出结构、质量门槛、自检项、公式 / 案例 / 比喻 / 记忆要求、未实现能力边界和 `$web-search` 联动。缺少关键项时返回非 0，并逐条列出缺失项。
-
-推荐使用闭环：
-
-```powershell
-python -X utf8 vibe-coding-template/skills/project-skill-creator/scripts/validate_knowledge_explainer.py path/to/knowledge-explainer/SKILL.md
-```
-
-如果脚本失败，不要把失败当成“建议项”，而是继续修改目标 `SKILL.md` 并复跑，直到通过。这个脚本只保证关键结构和质量规则没有丢失，不判断最终讲解内容是否真的写得好；真实讲解质量仍需要人工通读或用具体讲解任务检验。
-
-## 强约束模板如何校验
-
-模板包里有三类内容最容易在复制、裁剪和二次生成时跑偏：项目级 `AGENTS.md`、一次性执行 prompt、长篇知识讲解。它们都带有“不能丢”的承重规则，所以不只靠 README 提醒，而是配了专项脚本做硬校验。
-
-| 模板 | 防跑偏重点 | 校验命令 |
-| --- | --- | --- |
-| `$agents-md-creator` | 执行环境、编码、修改前必读、版本规则、修复报告规则、无依据保护逻辑、错误处理、测试验证、输出验收、进度播报 | `python -X utf8 vibe-coding-template/skills/agents-md-creator/scripts/validate_agents_md.py path/to/AGENTS.md` |
-| `$project-prompt-creator` | 硬性前置要求、项目边界、版本与报告策略、TODO 分块、实现约束、测试验证、交付物顺序、Markdown 文本块包裹 | `python -X utf8 vibe-coding-template/skills/project-prompt-creator/scripts/validate_project_prompt.py path/to/generated-prompt.md` |
-| `$knowledge-explainer` | 最高约束、1000 / 3000 字门槛、输出失败规则、讲解结构、质量门槛、自检项、未实现能力边界、`$web-search` 联动 | `python -X utf8 vibe-coding-template/skills/project-skill-creator/scripts/validate_knowledge_explainer.py path/to/knowledge-explainer/SKILL.md` |
-
-这些脚本检查的是结构和关键质量规则，不替代人工判断。它们的价值是先挡住明显跑偏：比如把 `AGENTS.md` 的进度播报格式删掉，把 prompt 的验证要求改成泛泛一句“测试一下”，或者把讲解类 skill 的 1000 / 3000 字硬门槛改成“适当展开”。脚本失败时，按缺失项继续修改并复跑；脚本通过后，再通读内容，确认项目事实、路径、版本、测试命令和报告规则都来自目标项目本身。
-
-## 推荐使用顺序
-
-1. 新项目先用 `$agents-md-creator` 生成项目级 `AGENTS.md`。
-2. 项目跑起来后，用 `$project-prompt-creator` 组织具体任务。
-3. 遇到方向不清、风险较高或需要用户选择的任务，用 `$plan-mode-planner` 生成 Plan mode prompt。
-4. 需要审查 diff、PR、指定文件或发布风险时，用 `$code-reviewer` 生成审查 prompt。
-5. 任务依赖最新外部事实时，用 `$web-search` 先取证，再进入实现、讲解或审查。
-6. 用户需要先理解领域知识、面试口述或项目追问时，用 `$knowledge-explainer`，必要时先让它调用 `$web-search`。
-7. 当某个流程反复出现、输入输出稳定、边界清楚时，再用 `$project-skill-creator` 创建新的项目本地 skill。
+---
 
 ## 目录结构
 
@@ -83,7 +37,7 @@ python -X utf8 vibe-coding-template/skills/project-skill-creator/scripts/validat
 vibe-coding-template/
 ├── README.md
 └── skills/
-    ├── agents-md-creator/
+    ├── agents-md-creator/          # 生成或更新项目级 AGENTS.md，沉淀长期协作规则
     │   ├── SKILL.md
     │   ├── agents/
     │   │   └── openai.yaml
@@ -91,7 +45,7 @@ vibe-coding-template/
     │   │   └── agents-template.md
     │   └── scripts/
     │       └── validate_agents_md.py
-    ├── project-skill-creator/
+    ├── project-skill-creator/      # 创建项目本地 skill，把稳定流程沉淀成长期工具
     │   ├── SKILL.md
     │   ├── agents/
     │   │   └── openai.yaml
@@ -99,7 +53,7 @@ vibe-coding-template/
     │   │   └── skill-template.md
     │   └── scripts/
     │       └── validate_knowledge_explainer.py
-    ├── project-prompt-creator/
+    ├── project-prompt-creator/     # 生成一次性任务 prompt，用于开发、修复、验证和交接
     │   ├── SKILL.md
     │   ├── agents/
     │   │   └── openai.yaml
@@ -107,36 +61,304 @@ vibe-coding-template/
     │   │   └── prompt-template.md
     │   └── scripts/
     │       └── validate_project_prompt.py
-    ├── plan-mode-planner/
+    ├── plan-mode-planner/          # 生成 Plan mode prompt，让复杂任务先决策再实现
     │   ├── SKILL.md
     │   ├── agents/
     │   │   └── openai.yaml
     │   └── references/
     │       └── plan-template.md
-    ├── code-reviewer/
+    ├── code-reviewer/              # 生成 code review prompt，帮助 Agent 找出真实问题
     │   ├── SKILL.md
     │   ├── agents/
     │   │   └── openai.yaml
     │   └── references/
     │       └── review-template.md
-    ├── web-search/
+    ├── web-search/                 # 检索外部事实，把官方资料转换为工程判断
     │   ├── SKILL.md
     │   └── agents/
     │       └── openai.yaml
-    └── knowledge-explainer/
+    └── knowledge-explainer/        # 梳理技术原理、核心概念和可复述表达
         ├── SKILL.md
         └── agents/
             └── openai.yaml
 ```
 
-## 复制到新项目后怎么改
+`SKILL.md` 是每个 skill 的主体文件，记录触发场景、读取顺序、输出要求和自检项。
 
-先读新项目的 README、现有规则、测试入口、发布方式和关键目录，再改模板。不要先把旧项目的约束一股脑贴进去。
+`agents/openai.yaml` 存放面向 OpenAI / ChatGPT skill 入口的展示信息。目标项目不使用这类入口时，可以不复制。
 
-建议按这个顺序裁剪：
+`references/` 适合放较长的模板、检查清单和示例输出。主体规则留在 `SKILL.md`，篇幅长的模板放进 `references/`，后续维护会更清楚。
 
-1. 替换所有 `{{...}}` 占位符，写入新项目真实路径、项目类型、版本文件、测试命令和报告目录。
-2. 删除不适用的条件段。可选示例包括 UI 审核、数据迁移、真实服务验证、人工登录验证等；这些示例不代表模板默认绑定某类项目。
-3. 把项目长期规则放进 `AGENTS.md`，把一次性任务要求放进 prompt，把高频稳定流程放进 skill。
-4. 保留可以检查的要求，删除空标题、空口号和无法执行的泛泛描述。
-5. 校验 `SKILL.md` frontmatter、`agents/openai.yaml`、中文 UTF-8 可读性和引用文件存在性。
+`scripts/` 存放可复用的校验脚本。只有确实需要自动检查的结构才建议放脚本。
+
+---
+
+## 七个内置 skill
+
+| Skill                                                            | 主要用途                                                                                |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [agents-md-creator](skills/agents-md-creator/SKILL.md)           | 生成或更新项目级 `AGENTS.md`，沉淀长期生效的内容质量、编码、测试、版本、修改报告记录、错误处理和交付规则。                         |
+| [project-skill-creator](skills/project-skill-creator/SKILL.md)   | 创建项目本地 skill，把高频、稳定、可复用的协作流程做成项目长期工具。                                               |
+| [project-prompt-creator](skills/project-prompt-creator/SKILL.md) | 生成一次具体任务的可执行 prompt，适合开发、修复、文档、验证和交接任务。                                             |
+| [plan-mode-planner](skills/plan-mode-planner/SKILL.md)           | 生成要求 Codex 先使用 Plan mode 的 prompt，适合方向未收敛、风险较高、需要用户拍板的任务。                           |
+| [code-reviewer](skills/code-reviewer/SKILL.md)                   | 生成 code review prompt，帮助 AI 基于真实 diff、项目规则和证据发现问题，默认只输出审查报告和建议。                     |
+| [web-search](skills/web-search/SKILL.md)                         | 为官方文档、论文、GitHub 仓库、标准、数据集、benchmark、release notes 和技术选型提供可追溯最新的外部依据。                   |
+| [knowledge-explainer](skills/knowledge-explainer/SKILL.md)       | 生成技术原理、八股讲解、从零教学、面试口述和项目追问回答；涉及最新外部依据时先调用 [web-search](skills/web-search/SKILL.md)。 |
+
+---
+
+## 设计哲学
+
+`vibe-coding-template` 的核心不是多放几个 skill，而是把 Agent 协作拆成几类稳定问题。**项目规则怎么沉淀，复杂任务怎么先决策，踩过的坑怎么变成下次不会再犯的约束。**
+
+### agents-md-creator
+
+[agents-md-creator](skills/agents-md-creator/SKILL.md) 负责把项目长期规则写进 `AGENTS.md`。很多 Agent 协作问题，表面上是某次 prompt 没写好，实际原因是项目规则没有固定入口。每次都靠临时提醒，Agent 很容易忘记内容质量要求、测试方法、版本策略、修改报告记录格式、编码要求和错误处理边界。
+
+#### 为什么要保留进度播报
+
+长任务里最难受的不是 Agent 做得慢，而是用户不知道它在做什么。它可能在读文件，也可能在跑测试，也可能已经卡在某个报错里，但如果中间没有反馈，整个过程就像黑箱。
+
+所以模板里保留了进度播报格式，适合执行命令、读写文件、测试页面、查看日志这类需要等待的场景。
+
+> 🧩 步骤：{一句话描述正在做什么}
+> 🎯 目的：{为什么要做}
+> ▶️ 执行：{命令、页面、文件路径或操作}
+> ✅ 结果：{当前状态}
+> 🧾 证据：{可验证证据路径}
+> 📝 备注：{可选，最多一句}
+
+它的作用不是增加仪式感，而是让 Agent 的工作过程**可观察、可追溯、可复盘**。用户不用每次都追问现在做到哪一步，也能看到当前进度在哪里，哪些事情还没有验证。
+
+#### 为什么要禁止无依据的保护逻辑
+
+这个约束来源于我在当前浏览器拓展项目里真实踩过的坑。Codex 很喜欢主动加一些**防御性编程**的逻辑。问题是这些逻辑如果没有依据，就会变成新的 bug。
+
+这个问题发生在当前浏览器拓展项目 CodeNote Helper 的 API 客户端链路里。最新代码可以查看 [shared/api-client.js 的 callAI 流式请求部分](https://github.com/Philip-Cao-9527/code-note-helper/blob/main/shared/api-client.js#L234-L258)，以及 [shared/api-client.js 的错误处理部分](https://github.com/Philip-Cao-9527/code-note-helper/blob/main/shared/api-client.js#L520-L573)。现在的代码已经不再对流式生成设置固定 90 秒中断，而是围绕用户取消、页面关闭、网络异常和服务端错误这些有真实依据的路径处理。
+
+当时在大语言模型 API 流式输出链路里，API 客户端被Codex偷偷加了一个固定 90 秒超时。
+
+```js
+const DIRECT_STREAM_TIMEOUT_MS = 90000;
+```
+
+流式请求开始后创建 `AbortController`，再用 `setTimeout` 在 90 秒后主动中断请求。
+
+```js
+let timeoutId = null;
+let timedOut = false;
+
+const controller = createLinkedAbortController(externalSignal);
+if (controller) {
+    timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, DIRECT_STREAM_TIMEOUT_MS);
+}
+
+const response = await fetch(targetUrl, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+    },
+    body: buildRequestBody(model, prompt, true),
+    signal: controller ? controller.signal : externalSignal
+});
+```
+
+随后在 `catch` 里把这次中断包装成接口超时。
+
+```js
+if (isAbortError(fetchError)) {
+    if (timedOut) {
+        throw new Error('API 调用失败: 接口响应超时，请稍后重试');
+    }
+    throw new Error('API 调用已取消');
+}
+
+if (timedOut) {
+    throw new Error('API 调用失败: 接口响应超时，请稍后重试');
+}
+```
+
+这样会导致一个很隐蔽的问题。只要流式生成超过 90 秒，不管模型是不是还在正常输出，前端都会主动中断请求，然后显示生成失败。
+
+```text
+生成失败：API 调用失败: 接口响应超时，请稍后重试
+```
+
+后来修复时移除了固定 90 秒超时，只保留用户取消、页面关闭、网络异常、服务端错误这些有真实依据的路径。这个例子让我意识到，很多看起来稳健的兜底，其实是在掩盖真实状态。
+
+所以 `AGENTS.md` 里需要明确写清楚，不要无依据加入固定超时、长度截断、条数上限、重试上限、静默降级或隐藏兜底。如果确实要加限制，必须说明依据、触发条件、可见行为、误伤风险和验证方式。
+
+
+#### 为什么要把版本和修改报告记录要求写清楚
+
+很多项目里，版本号和修改报告记录容易被写乱。小文案调整也升级版本号，纯文档修改也写修改报告记录，真正影响运行行为的改动反而没有证据记录。时间一长，版本历史就失去参考价值。
+
+[agents-md-creator](skills/agents-md-creator/SKILL.md) 的模板会把**版本号演进规则**和**修改报告记录要求**放进 `AGENTS.md`。默认情况下，纯文档修改、说明文字修正、技能文件调整、格式整理和注释修正不需要升级版本号。只有核心代码、可执行能力、项目行为、测试闭环或用户明确要求时，才需要考虑修改报告记录和版本记录。
+
+这样做的好处是，每次改动结束后，用户能知道**这次到底改了什么、怎么验证的、证据在哪里、版本是否同步、还有什么边界风险**。
+
+---
+
+### plan-mode-planner
+
+[plan-mode-planner](skills/plan-mode-planner/SKILL.md) 用来生成要求 Codex 先进入 Plan mode 的 prompt。它解决的不是写代码能力，而是复杂任务开始前的决策顺序。
+
+#### 为什么复杂任务不能一上来就写代码
+
+很多复杂任务失败，不是因为 Agent 不会写代码，而是它太早开始写代码。
+
+举一个真实项目里很常见的场景。当前项目里原本有一套本地数据保存逻辑，现在要新增云端备份能力。看起来只是加几个按钮和一个同步接口，但真正要先想清楚的是，备份逻辑应该直接塞进现有设置页面，还是拆成独立的同步模块；本地数据结构要不要调整；旧版本用户的数据怎么兼容；失败时是提示用户重试，还是记录可恢复状态；测试要只做脚本校验，还是必须覆盖真实账号、真实浏览器或真实服务。
+
+如果这些方向没有先定下来，Agent 很可能先写出一版能跑的代码，然后后面才发现模块边界不对、数据结构不好迁移、错误处理不符合项目习惯以及预期、测试也没有覆盖真实使用链路。到这个时候再返工，就不是改几行代码的问题，而是要重新设计调用链、文档、测试和修改报告记录。
+
+#### Plan mode 真正应该做什么
+
+[plan-mode-planner](skills/plan-mode-planner/SKILL.md) 的重点，是让 Agent 在动手前先慢下来。
+
+它生成的 prompt 会要求 Codex 先进入 Plan mode，只做只读探索、阅读、搜索、静态分析和必要的非破坏性核对。这个阶段不编辑文件，不生成修改报告记录，不修改版本号，也不提前写死详细方案。
+
+Plan mode 真正要做的是提炼 **2 到 4 个值得用户拍板的关键决策点**。这些决策点应该来自项目真实上下文，而不是把一堆细节问题丢给用户。仍然以上面的云端备份能力为例，真正值得先确认的可能是这些问题。
+
+第一，云端备份是作为现有设置页面的一部分继续扩展，还是拆成独立的同步能力。前者改动更小，但可能让设置页越来越臃肿；后者更清晰，但需要调整目录结构和调用关系。
+
+第二，备份失败后的处理方式要不要改变现有用户体验。比如只是提示失败，还是保留同步状态、错误原因和下一次恢复入口。这个选择会影响数据结构、用户文案和测试范围。
+
+第三，本轮验证测试应该做到什么程度。只做静态检查和脚本校验可以快速推进，但如果涉及真实账号、第三方服务或浏览器能力差异，就需要说明哪些结论必须留到真实环境验证。
+
+这样的问题才适合在 Plan mode 阶段交给用户拍板。Agent 可以根据仓库事实给出倾向，但不能替用户直接决定方向。
+
+#### 这种设计给用户带来的好处
+
+用户不需要在一堆细枝末节里做选择，也不会被迫从几个已经写死的技术方案里盲选。
+
+Plan mode 的价值，是先把真正影响代码方案的问题挑出来。用户只需要确认少数关键方向，后续实现就能围绕这些方向展开。这样可以减少返工，避免写完代码才发现结构不对。
+
+---
+
+### web-search
+
+[web-search](skills/web-search/SKILL.md) 用来把外部事实纳入定位链路。这个设计来自我在 CodeNote Helper 里的一次真实教训，也可以参考项目级版本 [CodeNote Helper web-search skill](https://github.com/Philip-Cao-9527/code-note-helper/tree/main/.agents/skills/web-search)。
+
+#### 为什么本地代码有时不够
+
+有些问题只看本地代码很难定位。对很多项目来说，问题可能来自语言版本、运行时差异、依赖库行为变化、操作系统限制、云服务接口、第三方 SDK、认证协议、浏览器或移动端能力差异，也可能来自官方文档更新、社区已知问题或平台审核政策变化。
+
+代码本身看起来合理，不代表它在真实环境里一定成立。比如某个 API 在旧版本库里可用，但新版本已经改了返回结构；某个 SDK 在 Linux 上正常，在 Windows 上因为路径或编码问题失败；某个 OAuth 流程在一个平台能维持长期授权，在另一个平台必须走显式授权；某个 benchmark 的评测口径改了，旧实现虽然能跑，但结果已经不能直接比较。
+
+我在当前项目 CodeNote Helper 的 Google Drive 授权问题上就遇到过这种情况。多轮 code review 和代码修改都没有定位到关键原因，后来结合外部资料才确认，Microsoft Edge 浏览器不能沿用 Chrome 浏览器的设计路径使用 `chrome.identity.getAuthToken`，Edge 浏览器需要采用 `launchWebAuthFlow`。这意味着 refresh token、长期授权、后台自动同步和 OAuth Client 类型都会受到浏览器差异影响。
+
+相关修改可以参考这个提交：
+
+https://github.com/Philip-Cao-9527/code-note-helper/commit/23eff5a8a75df038817b6841bbd82645f618202b
+
+这个案例说明，反复定位失败时，问题不一定藏在本地代码中，也可能来自最新的代码能力边界。**只依赖本地代码和模型记忆**，容易把问题误判成按钮链路、错误文案或参数设置。
+
+#### web-search 应该怎么参与工程判断
+
+[web-search](skills/web-search/SKILL.md) 的价值，是把外部资料转换成项目代码的工程判断。
+
+它优先使用官方文档、浏览器厂商资料、供应商文档、官方 GitHub、release notes 和维护者讨论。社区讨论可以补充线索，但不能单独当作结论。
+
+它的输出需要区分**已确认事实、来源冲突、工程推断和仍需真实环境验证的边界**。比如运行时版本差异、第三方服务限制、依赖库行为变化、认证流程、平台审核要求，这些都不能只凭模型记忆下结论。
+
+#### 外部资料不能替代本地代码审查
+
+[web-search](skills/web-search/SKILL.md) 不会替代本地代码审查。正确的关系是本地调用链、外部一手资料和真实验证边界一起定位问题。
+
+检索结果最终要回到**工程约束、测试要求、文档影响和风险边界**。比如某个官方文档说明平台能力不同，那就要进一步判断当前项目调用链受不受影响，测试要不要覆盖真实环境，README 或修改报告记录要不要说明差异，而不是只写一句网上有资料说不支持。
+
+---
+
+## skill 之间怎么配合
+
+[agents-md-creator](skills/agents-md-creator/SKILL.md) 处理长期规则。它适合生成 `AGENTS.md`，让后续所有 Agent 任务都能遵守同一套项目底线。内容质量要求、编码要求、测试方式、版本策略、修改报告记录要求、错误处理和禁止事项，都应该放在这里。
+
+[project-prompt-creator](skills/project-prompt-creator/SKILL.md) 处理一次性任务。它把当前任务要做什么、先读什么、不能改什么、如何测试、交付什么写成可执行 prompt。任务完成后，这份 prompt 通常不会继续长期生效。
+
+[plan-mode-planner](skills/plan-mode-planner/SKILL.md) 用在还不能直接动手的任务上。它要求执行者先读仓库和材料，再提炼少数关键决策点。用户确认方向后，才进入实现。
+
+[code-reviewer](skills/code-reviewer/SKILL.md) 用来把一次审查任务写清楚，让 AI 围绕真实改动、项目约定、测试证据和潜在影响去找问题。它适合检查代码、配置、文档、PR diff、指定 commit 或发布前风险，输出审查报告。默认不直接改代码，避免还没确认问题就进入修复。
+
+[project-skill-creator](skills/project-skill-creator/SKILL.md) 用来沉淀新 skill。某类流程反复出现，并且输入、输出、读取顺序、模板和边界都比较稳定时，再把它做成项目本地 skill。
+
+[web-search](skills/web-search/SKILL.md) 处理外部事实。它优先查官方文档、作者仓库、论文、标准、release notes、维护者说明和数据集主页。
+
+[knowledge-explainer](skills/knowledge-explainer/SKILL.md) 负责在缺少背景知识时先把技术原理讲清楚。它适合梳理不熟悉的技术栈、论文方法、架构概念、业务机制和面试追问，把核心概念、关键术语、公式含义、项目落点和可复述表达整理出来。涉及最新论文、官方文档、benchmark、现代 API 或争议结论时，先让它调用 [web-search](skills/web-search/SKILL.md)。
+
+---
+
+## 为什么需要校验脚本
+
+这套模板里有三类内容很容易在复制和二次生成时遗漏关键约束。
+
+第一类是项目级 `AGENTS.md`。它容易被写成几条泛泛建议，缺少内容质量要求、真实测试入口、版本规则、修改报告记录要求、错误处理边界和验收格式。
+
+第二类是一次性任务 prompt。它容易变成大纲，缺少硬性前置要求、真实调用链、验证命令和交付物顺序。
+
+第三类是讲解类 `SKILL.md`。它最容易被压缩成提纲，原本要求的 1000 / 3000 字门槛、公式解释、案例、比喻、记忆抓手、自检项和未实现能力边界会被悄悄删掉。
+
+所以模板包为这些关键结构配了三个脚本。脚本只检查重点结构是否还在，不判断最终内容是否优雅，也不保证它已经适合目标项目。它的价值是先挡住明显缺失，再留给人工通读判断项目事实、路径、版本、测试命令和风险边界是否真实。
+
+建议统一使用 `python -X utf8` 运行脚本，减少 Windows 中文路径和控制台编码带来的干扰。
+
+| 脚本                                                                                                      | 检查重点                                                                                                                                                                        | 命令                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [validate_agents_md.py](skills/agents-md-creator/scripts/validate_agents_md.py)                         | 检查 `AGENTS.md` 或 [agents-template.md](skills/agents-md-creator/references/agents-template.md) 是否保留执行环境、编码、修改前必读、内容质量要求、真实仓库结构、真实调用链、版本规则、修改报告记录要求、错误处理、测试验证、输出验收和进度播报等关键约束。 | `python -X utf8 vibe-coding-template/skills/agents-md-creator/scripts/validate_agents_md.py path/to/AGENTS.md`                                  |
+| [validate_project_prompt.py](skills/project-prompt-creator/scripts/validate_project_prompt.py)          | 检查一次性任务 prompt 是否保留硬性前置要求、项目边界、版本与文档策略、TODO 分块、实现约束、验证命令、交付物顺序和 Markdown 文本块包裹要求。                                                                                           | `python -X utf8 vibe-coding-template/skills/project-prompt-creator/scripts/validate_project_prompt.py path/to/generated-prompt.md`              |
+| [validate_knowledge_explainer.py](skills/project-skill-creator/scripts/validate_knowledge_explainer.py) | 检查讲解类 `SKILL.md` 是否保留 frontmatter、最高约束、1000 / 3000 字门槛、输出失败规则、讲解结构、质量门槛、自检项、未实现能力边界和 [web-search](skills/web-search/SKILL.md) 联动。                                           | `python -X utf8 vibe-coding-template/skills/project-skill-creator/scripts/validate_knowledge_explainer.py path/to/knowledge-explainer/SKILL.md` |
+
+脚本失败时，不建议把报错当成可选建议。先根据缺失项补齐，再循环往复地测试校验。
+
+脚本通过后，只能说明关键结构没有明显缺失，不能替代人工判断。人工通读时重点看这些内容：
+
+* 路径是否属于目标项目。
+* 测试命令是否真实可运行。
+* 版本文件、修改报告记录目录和发布方式是否准确。
+* 是否残留旧项目的私有模块名、站点、业务规则或审核约束。
+* 任务边界是否清楚，是否会让 Agent 越权执行。
+
+---
+
+## 推荐使用顺序
+
+新项目可以先用 [agents-md-creator](skills/agents-md-creator/SKILL.md) 生成项目级 `AGENTS.md`。这一步先把长期协作底线写清楚，包括编码、内容质量要求、修改前必读、测试方式、版本策略、修改报告记录要求和错误处理。
+
+项目规则稳定后，用 [project-prompt-creator](skills/project-prompt-creator/SKILL.md) 组织具体任务。它适合开发、修复、验证。
+
+遇到方向不清、风险较高、需要用户先拍板的任务，用 [plan-mode-planner](skills/plan-mode-planner/SKILL.md)。先读仓库，再给出少数关键决策点，避免一开始就写死方案。
+
+需要审查 diff、PR、指定文件、配置变更或发布风险时，用 [code-reviewer](skills/code-reviewer/SKILL.md)。默认只输出审查报告和建议。
+
+任务依赖最新外部事实时，用 [web-search](skills/web-search/SKILL.md)。先建立来源依据，再进入实现、讲解或审查。
+
+需要理解技术原理、准备面试口述、答辩表达或项目追问时，用 [knowledge-explainer](skills/knowledge-explainer/SKILL.md)。涉及最新资料时，先联动 [web-search](skills/web-search/SKILL.md)。
+
+某个流程反复出现，并且触发条件、输入、输出和边界都稳定后，再用 [project-skill-creator](skills/project-skill-creator/SKILL.md) 创建新的项目本地 skill。
+
+---
+
+## 引入新项目时的调整方式
+
+将模板文件引入自己的新项目时，旧项目的规则往往会水土不服。建议先阅读新项目的 README、测试要求、发布工作流和关键目录，再按照以下步骤进行配置。
+
+1. **替换占位变量**。将所有的 `{{...}}` 占位符修改为当前项目的真实路径、技术栈、版本文件、修改报告记录目录和测试命令。
+2. **归类存放要求**。长期生效的约定放入 `AGENTS.md`，单次开发要求写进具体 prompt，高频操作封装为项目专属 skill。
+3. **检查格式有效性**。确认 `SKILL.md` 的 frontmatter 结构完整，[agents/openai.yaml](skills/agents-md-creator/agents/openai.yaml) 填写有效，`references/` 和 `scripts/` 中引用的相关文件确实存在。
+4. **运行校验脚本**。对 `AGENTS.md`、一次性任务 prompt、讲解类 `SKILL.md` 分别运行对应脚本，根据报错补齐缺失项。
+5. **做一次真实测试**。选择一个低风险任务测试，观察 Agent 是否能按预期读取材料、发现问题、运行测试并交付结果。
+
+---
+
+## 使用时的几个提醒
+
+`vibe-coding-template` 提供的是协作模板，真正决定质量的是目标项目里的真实信息。路径、命令、版本、内容质量要求、发布方式和风险边界，都要来自当前项目。
+
+不要把所有内容都塞进 `AGENTS.md`。长期规则放进 `AGENTS.md`，一次性需求写成 prompt，反复出现且边界稳定的流程再沉淀成 skill。
+
+`AGENTS.md` 和 skill 不需要一次写到完美。更好的方式是随着项目推进，把自己实际踩过的坑、反复出现的偏差、已经验证过的工作流逐步沉淀进去。每次更新最好能对应**具体问题、真实经验或稳定流程**，这样规则才会越来越贴近项目，而不是停留在好看的原则上。
+
+不要把脚本通过当成质量保证。脚本只检查关键结构是否存在，最终内容仍然需要人工判断，也需要真实任务验证。

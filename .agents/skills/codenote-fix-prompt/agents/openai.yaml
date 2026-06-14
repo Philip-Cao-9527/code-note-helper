@@ -1,4 +1,4 @@
 interface:
-  display_name: "CodeNote 普通任务 Prompt"
-  short_description: "生成 CodeNote Helper 普通开发、修复、验证和治理执行 prompt"
-  default_prompt: "使用 $codenote-fix-prompt 生成一份 CodeNote Helper 普通执行任务 prompt。"
+  display_name: "CodeNote 通用任务 Prompt"
+  short_description: "生成 CodeNote Helper 通用开发、修复、验证和执行 prompt"
+  default_prompt: "使用 $codenote-fix-prompt 生成一份 CodeNote Helper 通用执行任务 prompt。"
