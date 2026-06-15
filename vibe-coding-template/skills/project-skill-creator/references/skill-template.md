@@ -40,7 +40,7 @@
 
 ## SKILL.md 模板
 
-```markdown
+````markdown
 ---
 name: {{skill名称}}
 description: {{一句话说明这个 skill 做什么、什么时候触发、适合哪些任务；不要写空泛口号。}}
@@ -154,7 +154,7 @@ python -X utf8 vibe-coding-template/skills/project-skill-creator/scripts/validat
 3. 是否没有做超出本 skill 职责的事。
 4. 是否明确验证方式和未验证边界。
 5. 是否引用的 `references/`、`scripts/`、`templates/`、`assets/` 文件都真实存在。
-```
+````
 
 ## openai.yaml 模板
 
