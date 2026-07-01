@@ -89,7 +89,7 @@ python -X utf8 .agents/skills/codenote-skill-creator/scripts/validate_knowledge_
 
 - 简体中文输出、Windows 与 UTF-8 编码。
 - 默认保持当前版本；本地 skill 治理通常不修改 `manifest.json`、popup 版本或 README 版本徽章。
-- 涉及协作资产结构调整时，通常需要 `DEVLOG.md` 同版本记录和 docs 修复报告。
+- 涉及协作资产结构调整时，通常需要 `DEVLOG.md` 同版本记录和 docs 修复报告；如果生成报告，必须按 CodeNote Helper 语境写清楚 skill / prompt 资产变化对后续任务、版本记录和维护流程的影响，不要只堆路径、英文 skill 名或模板字段。
 - 涉及浏览器扩展运行时代码、权限、远程请求或用户数据时，必须继承 Chrome Web Store 审核友好约束。
 - 禁止无依据保护逻辑和吞异常。
 - 用户可见文案必须自然中文。

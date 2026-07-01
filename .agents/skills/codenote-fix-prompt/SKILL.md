@@ -46,6 +46,8 @@ python -X utf8 .agents/skills/codenote-fix-prompt/scripts/validate_codenote_fix_
 - 当前版本必须从 `manifest.json`、`popup/popup.html`、`README.md` 现场核对；用户未要求升版时默认保持当前版本。
 - 任务涉及功能修复、行为变更、UI 调整、结构调整、测试闭环或版本历史更新时，prompt 应要求同步 `DEVLOG.md` 并新增 `docs/fix-report-vX.Y.Z-YYYYMMDD-主题.md`。
 - 任务不触发版本或报告时，prompt 应要求最终总结说明原因。
+- 修复报告内容质量：如果 prompt 要求新增 `docs/fix-report-*.md`，必须同时要求报告通俗可读。涉及 Chrome MV3、`manifest.json`、`host_permissions`、`content_scripts.matches`、OAuth、Google Drive、WebDAV、service worker、content script、storage、Playwright 或 Node test 等英文术语、字段名和扩展概念时，要补中文解释和用户影响说明，不要只堆字段、路径和英文缩写。
+- 多次验证结构：如果后续执行者进行了多次 Node 测试、静态检查、Playwright、真实浏览器或手动复测，prompt 必须要求报告用清晰 Markdown 标题区分每一次验证，并用表格汇总命令、目标、结果、证据和剩余风险；失败时要解释原因边界，不只描述现象。
 - 根目录 `references/` 中标注“仅供参考，非项目代码”的内容只能参考，不得要求直接修改；`.agents/skills/*/references/` 属于本地 skill 资产，可按任务目标修改。
 - 语言使用简体中文；代码、命令、报错、路径、字段名、域名、专有名词保留原文。
 
@@ -56,7 +58,8 @@ python -X utf8 .agents/skills/codenote-fix-prompt/scripts/validate_codenote_fix_
 - Windows 与 UTF-8 编码：修改 JS、HTML、CSS、JSON、Markdown、manifest、README 等文件时保持原文件风格，新建文本默认 UTF-8。
 - 最小必要改动：先理解真实入口、调用链、依赖顺序和站点隔离边界，再做修改。
 - 版本策略：默认保持当前版本；只有用户明确要求升版时才升级，并同步所有版本位置。
-- 文档闭环：按项目规则更新 `DEVLOG.md` 和 `docs/fix-report`，报告链接使用可跳转 Markdown 相对路径。
+- 文档闭环：按项目规则更新 `DEVLOG.md` 和 `docs/fix-report`，报告链接使用可跳转 Markdown 相对路径；带行号时统一使用 `[文件名](相对路径#L行号)`，不要把 `:行号` 写进链接目标。
+- 报告可读性：`docs/fix-report` 不只是证据清单。必须把权限、远程请求、同步、注入顺序、用户数据、浏览器差异和测试结果讲清楚；字段名、路径和英文术语要配中文解释，原因分析要说明用户会遇到什么后果。
 - 权限与审核友好：涉及 `manifest.json`、权限、host、content scripts、远程请求、README、隐私政策或商店说明时，必须做审核友好自检。
 - 禁止无依据保护逻辑：不要凭空加入固定超时、长度截断、条数上限、重试上限、静默兜底或吞异常。
 - 用户可见中文文案：按钮、toast、弹窗、错误提示和设置说明必须自然中文，不暴露内部变量、函数名、模块名、堆栈或调试信息。

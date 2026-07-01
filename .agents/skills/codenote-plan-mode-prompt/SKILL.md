@@ -55,7 +55,7 @@ description: 为 CodeNote Helper 生成要求 Codex 使用 Plan mode 的中文 p
 - CodeNote Helper 是 Chrome MV3 扩展，主线覆盖算法刷题笔记、间隔复习、深度学习复盘和 AI 对话时间轴。
 - 默认简体中文、Windows 与 UTF-8 编码。
 - 默认保持当前版本；升版必须由用户明确要求并同步版本位置。
-- 涉及功能修复、行为变更、UI 调整、结构调整或测试闭环时，通常需要 `DEVLOG.md` 和 docs 修复报告。
+- 涉及功能修复、行为变更、UI 调整、结构调整或测试闭环时，通常需要 `DEVLOG.md` 和 docs 修复报告；计划中必须提醒后续报告要通俗可读，Chrome MV3、权限、OAuth / Google Drive / WebDAV、测试工具和 manifest 字段都要配中文解释，不能只堆路径和英文术语。
 - 涉及 `manifest.json`、权限、host、content scripts、远程请求、README、隐私政策或商店说明时，必须先评估 Chrome Web Store 审核成本。
 - 不要新增无依据的固定超时、截断、上限、重试、静默兜底或吞异常。
 - 不要提前把所有规则塞成一个完整实现方案；Plan mode 的重点是先识别少数关键选择。

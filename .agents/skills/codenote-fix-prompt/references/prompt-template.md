@@ -32,7 +32,9 @@
 2. 版本策略：<保持当前版本或按用户要求升版>。
 3. 需要更新 `DEVLOG.md` 时，只记录本轮真实改动、验证和边界。
 4. 需要新增 docs 修复报告时，使用 `docs/fix-report-vX.Y.Z-YYYYMMDD-主题.md`，不要覆盖已有报告。
-5. 报告内文件链接使用可跳转 Markdown 相对路径，优先落到具体文件名，能定位到行号时写行号。
+5. 报告内文件链接使用可跳转 Markdown 相对路径，优先落到具体文件名，能定位到行号时统一使用 `[文件名](相对路径#L行号)`，不要把 `:行号` 写进链接目标。
+6. docs 修复报告必须通俗可读：不要只堆文件路径、manifest 字段、API 字段名或英文缩写；涉及 Chrome MV3、`host_permissions`、`content_scripts.matches`、OAuth、Google Drive、WebDAV、service worker、content script、storage、Playwright 或 Node test 等概念时，要补中文解释和用户影响说明。
+7. 如果本轮进行了多次 Node 测试、静态检查、Playwright、真实浏览器或手动复测，报告必须用清晰 Markdown 标题区分每一次验证，并用表格汇总命令、目标、结果、证据和剩余风险；失败时要分析原因边界，不要只描述现象。
 
 【本次要完成的事项，必须全部落地】
 
