@@ -33,6 +33,12 @@ def read_utf8(path: Path) -> str:
 
 
 def validate_rules(text: str) -> list[str]:
+    exact_report_link_rule = (
+        "生成报告时必须使用可跳转的 Markdown 相对路径交叉引用。"
+        "链接优先落到具体文件名，能定位到行号时必须使用 `[文件名](相对路径#L行号)` 范式；"
+        "不要把 `:行号` 写进链接目标里。"
+        "不要只写文件夹名代替关键证据，也不要使用当前 IDE 无法跳转的绝对路径，必须强制使用相对路径。"
+    )
     progress_block_needles = (
         "在执行命令、读写文件、测试页面、查看日志时，使用简洁中文进度块：",
         "> 🧩 步骤：{一句话描述正在做什么}",
@@ -70,7 +76,7 @@ def validate_rules(text: str) -> list[str]:
         Rule("缺少报告触发 / 不触发边界。", needles=("纯文档", "默认不触发修复报告", "用户明确要求")),
         Rule("缺少报告命名占位符规则。", needles=("{{报告目录}}", "{{版本号}}", "{{日期}}")),
         Rule("缺少完整修复报告内容清单。", needles=report_content_needles),
-        Rule("缺少 Markdown 相对路径证据链接规则。", needles=("Markdown 相对路径", "具体文件名")),
+        Rule("缺少报告 Markdown 相对路径交叉引用原文规则。", needles=(exact_report_link_rule,)),
         Rule("缺少版本号演进规则。", needles=("版本号演进规则", "{{当前版本}}", "{{版本文件}}", "{{README版本位置}}")),
         Rule("缺少 PATCH / MINOR / MAJOR 说明。", needles=("PATCH", "MINOR", "MAJOR")),
         Rule("缺少默认不升版边界。", needles=("用户没有明确要求 bump", "默认在当前版本继续修改")),

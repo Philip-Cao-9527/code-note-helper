@@ -283,7 +283,7 @@ ${content}`;
     }
 
     function generateQaOnlyPrompt(data) {
-        const { noteTitle, problem, myCode, officialSolution, headingLevel, userLevel, notes, url } = data;
+        const { noteTitle, problem, myCode, officialSolution, headingLevel, userLevel, notes, url, recommendedSolution, customRecommendationRequirement } = data;
         const levelMap = { "#": 1, "##": 2, "###": 3, "####": 4, "#####": 5 };
         const levelNum = levelMap[headingLevel] || 3;
         const h1 = '#'.repeat(levelNum);
@@ -292,10 +292,26 @@ ${content}`;
         const notesLiteral = normalizedNotes || '无';
         const levelDesc = buildQaOnlyLevelDesc(userLevel);
         const mustIncludeCode = /我的题解.*有什么问题|题解.*有什么问题|代码.*有什么问题/i.test(notesLiteral);
+        const customRecommendationPrompt = buildCustomRecommendationRequirementPrompt(customRecommendationRequirement);
+        const selectedRecommendationPrompt = customRecommendationPrompt
+            ? ''
+            : buildSelectedRecommendationPrompt(recommendedSolution);
+        const qaRecommendationPrompt = customRecommendationPrompt
+            ? `## 推荐题解与讲解偏好（仅答疑模式同样生效）
+${customRecommendationPrompt}
+`
+            : selectedRecommendationPrompt
+                ? `## 推荐题解与讲解偏好（仅答疑模式同样生效）
+**用户已选择推荐题解（必须优先遵守）：**
+- ${selectedRecommendationPrompt}
+- 即使当前是“仅答疑”模式，推荐方案、代码修改建议和疑问回应也必须优先围绕用户选择的题解展开；其他题解只用于对比、补充或说明取舍。
+`
+                : '';
 
         return `## 任务说明
 我是 LeetCode【${userLevel}】，当前使用“仅答疑”模式。请使用与“完整笔记模式”一致的评价与回应范式，直接进入问题分析，不要写冗长前置说明。讲解风格请根据我的水平进行调整（${levelDesc}）。
 
+${qaRecommendationPrompt}
 ## 输出格式要求（仅答疑模式）
 请严格按照以下结构输出（标题级别从 ${h1} 开始）：
 
