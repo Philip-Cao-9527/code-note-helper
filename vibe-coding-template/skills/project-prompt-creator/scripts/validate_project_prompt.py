@@ -9,6 +9,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+EXACT_MARKDOWN_BLOCK_RULE = (
+    "- 最终 prompt 必须整体放入一个 Markdown 文本块。\n"
+    "- 如果 prompt 内部包含三反引号，外层使用四反引号或更长围栏。\n"
+    "- 输出代码块前最多写一句中文引导；输出代码块后不要追加额外正文。"
+)
+
+
 @dataclass(frozen=True)
 class Rule:
     message: str
@@ -33,6 +40,10 @@ def read_utf8(path: Path) -> str:
 
 
 def validate_rules(text: str) -> list[str]:
+    missing: list[str] = []
+    if EXACT_MARKDOWN_BLOCK_RULE not in text:
+        missing.append("缺少逐字一致的 Markdown 文本块强制规则。")
+
     rules = [
         Rule("缺少任务开场和仓库路径。", needles=("当前仓库", "{{仓库路径}}")),
         Rule("缺少硬性前置要求。", needles=("【硬性前置要求（必须先做）】", "不做任何修改前")),
@@ -59,9 +70,10 @@ def validate_rules(text: str) -> list[str]:
         Rule("缺少交付物要求。", needles=("【交付物要求】", "文件改动清单", "问题与修复闭环", "版本同步清单", "最终结论")),
         Rule("缺少证据路径和修复报告路径要求。", needles=("证据路径", "修复报告路径")),
         Rule("缺少注意事项。", needles=("【注意】", "不要把历史测试结果写成本轮验证结果")),
-        Rule("缺少 Markdown 文本块包裹提醒。", needles=("Markdown 文本块", "四反引号")),
+        Rule("缺少 Markdown 文本块包裹提醒。", needles=("Markdown 文本块", "四反引号", "输出代码块前最多写一句中文引导")),
     ]
-    return [rule.message for rule in rules if not rule.matches(text)]
+    missing.extend(rule.message for rule in rules if not rule.matches(text))
+    return missing
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -115,5 +115,7 @@ C. {{事项 C 标题，可删除}}
 - 如果用户要创建新 skill，改用 `$project-skill-creator`。
 - 如果最终 prompt 需要交叉引用其他 skill，必须采用 `$skill-name` 形式，不要只写反引号包裹的 skill 名称。
 - 如果任务触发报告或版本策略，优先引用项目 `AGENTS.md` 的真实规则，不要使用本模板里的示例值。
-- 最终 prompt 必须整体放入一个 Markdown 文本块；如果内部包含三反引号，外层使用四反引号或更长围栏，避免用户复制时被截断。
+- 最终 prompt 必须整体放入一个 Markdown 文本块。
+- 如果 prompt 内部包含三反引号，外层使用四反引号或更长围栏。
+- 输出代码块前最多写一句中文引导；输出代码块后不要追加额外正文。
 - 生成或改写 prompt 后，可运行 `python -X utf8 vibe-coding-template/skills/project-prompt-creator/scripts/validate_project_prompt.py path/to/generated-prompt.md` 检查硬性结构和关键质量规则；失败时按缺失项继续修改并复跑。

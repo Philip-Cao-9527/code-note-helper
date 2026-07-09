@@ -66,11 +66,10 @@ python -X utf8 vibe-coding-template/skills/project-prompt-creator/scripts/valida
 
 ## 输出包裹规则
 
-- 最终 prompt 必须用单个 Markdown 文本块包裹，方便用户一次性复制。
-- 如果 prompt 内部包含三反引号，外层使用四反引号或更长围栏，例如 ````text。
+- 最终 prompt 必须整体放入一个 Markdown 文本块。
+- 如果 prompt 内部包含三反引号，外层使用四反引号或更长围栏。
 - 不要用 XML/HTML 风格标签、引用块或普通列表替代文本块。
-- 输出代码块前最多写一句中文引导，例如“下面是可直接执行的 prompt。”
-- 输出代码块后不要追加额外正文，避免影响复制。
+- 输出代码块前最多写一句中文引导；输出代码块后不要追加额外正文。
 
 ## 质量标准
 
